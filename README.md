@@ -30,38 +30,35 @@ Players can sell their game square NFTs in the marketplace for SOL
 # SFG Program Instructions:
 ```
 SFGInstruction::Bid(amount, ownerKey)
-Creates a BidEntry into the AuctionList (SOL lamports amount, pub key)  
-Can only be done by ownerKey
-Can only be done if before auction_end_block_number
-Use PDA for holding SOL funds
+- Creates a BidEntry into the AuctionList (SOL lamports amount, pub key)  
+- Can only be done by ownerKey
+- Can only be done if before auction_end_block_number
+- Use PDA for holding SOL funds
 
 SFGInstruction::CancelBid(ownerKey)
-Cancels a BidEntry in the AuctionList
-Can only be done by ownerKey
-Can only be done if before auction_end_block_number
-Send back SOL funds
+- Cancels a BidEntry in the AuctionList
+- Can only be done by ownerKey
+- Can only be done if before auction_end_block_number
+- Send back SOL funds
 
 SFGInstruction::MintNFT(bidEntryNumber)
-Mints NFT for a BidEntry, sends SOL to Treasury
-Can only be done if auction_end_block_number is passed
-Can only be done by admin owner
-
+- Mints NFT for a BidEntry, sends SOL to Treasury
+- Can only be done if auction_end_block_number is passed
+- Can only be done by admin owner
 
 SFGInstruction::InitiatePlay(square)
-Deposit NFT to initiate play
-Can only be done by square owner
-Once complete, play is enabled - owner can attack or get attacked
+- Deposit NFT to initiate play
+- Can only be done by square owner
+- Once complete, play is enabled - owner can attack or get attacked
 
-
-SFGInstruction::EndPlay(fromSquare, toSquare)
-Withdraw NFT from play
-Can only be done by square owner
-Once complete, play is disabled - owner cannot attack or get attacked
-
+SFGInstruction::EndPlay(square)
+- Withdraw NFT from play
+- Can only be done by square owner
+- Once complete, play is disabled - owner cannot attack or get attacked
 
 SFGInstruction::Attack(fromSquare, toSquare)
-Attacks neighboring square
-Can only be done by fromSquare owner
-If a square loses all lives, transfer ownership of NFT to attacker
+- Attacks neighboring square
+- Can only be done by fromSquare owner
+- If a square loses all lives, transfer ownership of NFT to attacker
 
 ```
