@@ -1,5 +1,7 @@
 # Sixty Four Game
 
+[https://www.sixtyfourgame.com](https://www.sixtyfourgame.com)
+
 - Game board consists of 64 squares
 - 4 teams (16 sq/team initially) - Red, Blue, Green & Orange
 - Owners of squares can battle neighbouring squares
