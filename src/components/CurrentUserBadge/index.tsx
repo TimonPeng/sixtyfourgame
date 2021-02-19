@@ -16,11 +16,11 @@ export const CurrentUserBadge = (props: {}) => {
   // should use SOL ◎ ?
 
   return (
-    <div className="wallet-wrapper">
+    <div className="wallet-wrapper text-white">
       <span>
         {formatNumber.format((account?.lamports || 0) / LAMPORTS_PER_SOL)} SOL
       </span>
-      <div className="wallet-key">
+      <div className="wallet-key text-white">
         {shortenAddress(`${wallet.publicKey}`)}
         <Identicon
           address={wallet.publicKey.toBase58()}
