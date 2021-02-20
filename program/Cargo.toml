@@ -1,8 +1,11 @@
 [package]
-name = "bpf-program-template"
+name = "sixtyfourgame"
+authors = ["Mike Tourigny <mike@sixtyfourgame.com>"]
 version = "0.1.0"
 edition = "2018"
-license = "WTFPL"
+repository = "https://github.com/turnyay/sixtyfourgame"
+license = "Apache-2.0"
+homepage = "https://sixtyfourgame.com/"
 publish = false
 
 [dependencies]
@@ -19,4 +22,5 @@ solana-validator = "1.5.0"
 tokio = { version = "0.3", features = ["macros"]}
 
 [lib]
+name="sixtyfourgame"
 crate-type = ["cdylib", "lib"]

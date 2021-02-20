@@ -8,6 +8,7 @@ use solana_sdk::{
 /// Errors that may be returned by SixtyFourGame
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum SixtyFourGameError {
+    
 }
 impl From<SixtyFourGameError> for ProgramError {
     fn from(e: SixtyFourGameError) -> Self {

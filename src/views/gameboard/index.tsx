@@ -8,7 +8,7 @@ import { useConnectionConfig } from "../../contexts/connection";
 import { useMarkets } from "../../contexts/market";
 import { formatNumber } from "../../utils/utils";
 
-export const HomeView = () => {
+export const GameBoardView = () => {
   const { marketEmitter, midPriceInUSD } = useMarkets();
   const { tokenMap } = useConnectionConfig();
   const { account } = useNativeAccount();
@@ -35,7 +35,7 @@ export const HomeView = () => {
   return (
     <Row gutter={[16, 16]} align="middle">
       <Col span={24}>
-        <h2>Welcome to 64</h2>
+        <h2>GameBoard</h2>
       </Col>
       <Col span={24}>
         <h4>Battle for The Prize, winners take all</h4>

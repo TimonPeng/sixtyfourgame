@@ -41,6 +41,6 @@ pub fn get_slot_hash(data: &[u8], slot_height: u64) -> Hash {
     }
 }
 
-pub fn unpack_mint(data: &[u8]) -> Result<Mint, SolanarollError> {
-    TokenPack::unpack(data).map_err(|_| SolanarollError::ExpectedMint)
+pub fn unpack_mint(data: &[u8]) -> Result<Mint, SixtyFourGameError> {
+    TokenPack::unpack(data).map_err(|_| SixtyFourGameError::ExpectedMint)
 }
