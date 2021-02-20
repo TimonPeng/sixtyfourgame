@@ -4,26 +4,26 @@ use std::convert::TryInto;
 use crate::error::SixtyFourGameError::InvalidInstruction;
 
 pub enum SixtyFourGameInstruction {
-    /// Bid - amount and pubkey - adds BidEntry to AuctionList
+    /// Bid - amount  - adds BidEntry to AuctionList
     Bid {
         amount: u64,
     },
-    /// CancelBid - pubkey - removes BidEntry from AuctionList
+    /// CancelBid - removes BidEntry from AuctionList
     CancelBid {
     },
     /// MintNFT - bidEntryNumber - creates NFT after auction
     MintNFT {
         bidEntryNumber: u64
     },
-    /// InitiatePlay - square and pubkey - allows player to attack
+    /// InitiatePlay - square - allows player to attack
     InitiatePlay {
         square: u64,
     },
-    /// EndPlay - square and pubkey - withdraws NFT to owner (can't attack)
+    /// EndPlay - square - withdraws NFT to owner (can't attack)
     EndPlay {
         square: u64,
     },
-    /// Attack - from/to squares and fromPubkey - attacks neighboring square
+    /// Attack - from/to squares - attacks neighboring square
     Attack {
         fromSquare: u64,
         toSquare: u64,

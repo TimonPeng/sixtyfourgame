@@ -13,10 +13,17 @@ export const AuctionView = () => {
   const { tokenMap } = useConnectionConfig();
   const { account } = useNativeAccount();
 
+  const [bidAmount, setBidAmount] = React.useState(1);
+
+
   const balance = useMemo(
     () => formatNumber.format((account?.lamports || 0) / LAMPORTS_PER_SOL),
     [account]
   );
+
+  const refreshBidAmount = React.useCallback((event) => {
+      setBidAmount(event.target.value);
+  }, []);
 
   useEffect(() => {
     const refreshTotal = () => {};
@@ -32,13 +39,30 @@ export const AuctionView = () => {
     };
   }, [marketEmitter, midPriceInUSD, tokenMap]);
 
+  const handleSubmit = React.useCallback((event) => {
+      alert('Bid for : ' + bidAmount);
+      event.preventDefault();
+  }, [bidAmount]);
+
   return (
     <Row gutter={[16, 16]} align="middle">
       <Col span={24}>
         <h2>Auction</h2>
+        <h4>Highest 64 bidders get the 64 gameboard squares</h4>
       </Col>
       <Col span={24}>
-        <h4>Highest 64 bidders get the 64 gameboard squares</h4>
+        <h3>Create New Bid</h3>
+        <form onSubmit={handleSubmit}>
+          <label>
+            Bid Amount (SOL):
+            <input className="text-black" type="number" value={bidAmount} onChange={refreshBidAmount}/>
+          </label>
+          <input className="text-black" type="submit" value="Submit" />
+        </form>
+      </Col>
+      <Col span={24}>
+          <h3>My Bids</h3>
+          You have no bids
       </Col>
       <Col span={8}>
         <Link to="/auction">
