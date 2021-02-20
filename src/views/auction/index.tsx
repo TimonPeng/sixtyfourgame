@@ -5,16 +5,18 @@ import { Link } from "react-router-dom";
 import { ConnectButton } from "../../components/ConnectButton";
 import { useNativeAccount } from "../../contexts/accounts";
 import { useConnectionConfig } from "../../contexts/connection";
+import { useWallet } from "../../contexts/wallet";
 import { useMarkets } from "../../contexts/market";
 import { formatNumber } from "../../utils/utils";
 
 export const AuctionView = () => {
+
+  const { connected, connect, select, provider } = useWallet();
   const { marketEmitter, midPriceInUSD } = useMarkets();
   const { tokenMap } = useConnectionConfig();
   const { account } = useNativeAccount();
 
   const [bidAmount, setBidAmount] = React.useState(1);
-
 
   const balance = useMemo(
     () => formatNumber.format((account?.lamports || 0) / LAMPORTS_PER_SOL),
@@ -50,20 +52,34 @@ export const AuctionView = () => {
         <h2>Auction</h2>
         <h4>Highest 64 bidders get the 64 gameboard squares</h4>
       </Col>
-      <Col span={24}>
-        <h3>Create New Bid</h3>
-        <form onSubmit={handleSubmit}>
-          <label>
-            Bid Amount (SOL):
-            <input className="text-black" type="number" value={bidAmount} onChange={refreshBidAmount}/>
-          </label>
-          <input className="text-black" type="submit" value="Submit" />
-        </form>
-      </Col>
-      <Col span={24}>
-          <h3>My Bids</h3>
-          You have no bids
-      </Col>
+      { connected ?
+        (<Col span={24}>
+          <h3>Create New Bid</h3>
+          <form onSubmit={handleSubmit}>
+            <label>
+              Bid Amount (SOL):
+              <input className="text-black" type="number" value={bidAmount} onChange={refreshBidAmount}/>
+            </label>
+            <input className="text-black" type="submit" value="Submit" />
+          </form>
+        </Col>) : (
+        <Col span={24}>
+          <ConnectButton
+            type="text"
+            size="large"
+            allowWalletChange={true}
+            style={{ color: "#2abdd2" }}
+          />
+        </Col>)
+      }
+      { connected ?
+        (<Col span={24}>
+            <h3>My Bid</h3>
+            You have no bid
+        </Col>) : (
+          <Col span={24}></Col>
+        )
+      }
       <Col span={8}>
         <Link to="/auction">
           <Button>Auction</Button>
