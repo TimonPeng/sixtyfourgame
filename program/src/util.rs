@@ -5,6 +5,7 @@ use solana_sdk::{
     entrypoint_deprecated,
     entrypoint_deprecated::ProgramResult,
     info,
+    hash::{Hash, HASH_BYTES},
     program_error::ProgramError,
     pubkey::Pubkey,
     sysvar::{
@@ -23,9 +24,13 @@ use spl_token::{instruction};
 use solana_sdk::program_pack::Pack as TokenPack;
 use spl_token::state::{Account as TokenAccount, Mint};
 
+use std::hash::{Hash as StdHash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+
 use num_derive::FromPrimitive;
 use solana_sdk::{decode_error::DecodeError};
 use thiserror::Error;
+
 
 const MAX_NUM_SLOT_HASHES: u64 = 512;
 pub fn get_slot_hash(data: &[u8], slot_height: u64) -> Hash {

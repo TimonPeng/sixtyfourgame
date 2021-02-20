@@ -7,11 +7,9 @@ pub enum SixtyFourGameInstruction {
     /// Bid - amount and pubkey - adds BidEntry to AuctionList
     Bid {
         amount: u64,
-        pubkey: Account,
     },
     /// CancelBid - pubkey - removes BidEntry from AuctionList
     CancelBid {
-        pubkey: Account,
     },
     /// MintNFT - bidEntryNumber - creates NFT after auction
     MintNFT {
@@ -20,18 +18,15 @@ pub enum SixtyFourGameInstruction {
     /// InitiatePlay - square and pubkey - allows player to attack
     InitiatePlay {
         square: u64,
-        pubkey: Account,
     },
     /// EndPlay - square and pubkey - withdraws NFT to owner (can't attack)
     EndPlay {
         square: u64,
-        pubkey: Account,
     },
     /// Attack - from/to squares and fromPubkey - attacks neighboring square
     Attack {
         fromSquare: u64,
         toSquare: u64,
-        fromPubkey: Account,
     },
 }
 
@@ -43,26 +38,20 @@ impl SixtyFourGameInstruction {
         Ok(match tag {
             0 => Self::Bid {
                 amount: Self::unpack_amount(rest)?,
-                pubkey: Self::unpack_pubkey(rest)?,
             },
-            1 => Self::CancelBid {
-                pubkey: Self::unpack_pubkey(rest)?,
-            },
+            1 => Self::CancelBid {},
             2 => Self::MintNFT {
                 bidEntryNumber: Self::unpack_amount(rest)?,
             },
             3 => Self::InitiatePlay {
                 square: Self::unpack_amount(rest)?,
-                pubkey: Self::unpack_pubkey(rest)?,
             },
             4 => Self::EndPlay {
                 square: Self::unpack_amount(rest)?,
-                pubkey: Self::unpack_pubkey(rest)?,
             },
             5 => Self::Attack {
                 fromSquare: Self::unpack_amount(rest)?,
                 toSquare: Self::unpack_amount(rest)?,
-                fromPubkey: Self::unpack_pubkey(rest)?,
             },
             _ => return Err(InvalidInstruction.into()),
         })

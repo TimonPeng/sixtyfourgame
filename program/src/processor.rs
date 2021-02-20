@@ -25,8 +25,8 @@ use thiserror::Error;
 use crate::{
     error::SixtyFourGameError,
     instruction::SixtyFourGameInstruction,
-    // state::Escrow,
-    util::{unpack_mint, hash_value, get_slot_hash}
+    state::{BidEntry, AuctionList, GameSquare},
+    util::{unpack_mint, get_slot_hash}
 };
 
 pub struct Processor;
@@ -39,29 +39,29 @@ impl Processor {
         let instruction = SixtyFourGameInstruction::unpack(instruction_data)?;
 
         match instruction {
-            SixtyFourGameInstruction::Bid { amount, pubkey } => {
+            SixtyFourGameInstruction::Bid { amount } => {
                 msg!("SixtyFourGameInstruction: Bid");
-                Self::process_bid(accounts, amount, pubkey, program_id)
+                Self::process_bid(accounts, amount, program_id)
             }
-            SixtyFourGameInstruction::CancelBid { pubkey } => {
+            SixtyFourGameInstruction::CancelBid { } => {
                 msg!("SixtyFourGameInstruction: CancelBid");
-                Self::process_cancel_bid(accounts, pubkey, program_id)
+                Self::process_cancel_bid(accounts, program_id)
             }
             SixtyFourGameInstruction::MintNFT { bidEntryNumber } => {
                 msg!("SixtyFourGameInstruction: MintNFT");
                 Self::process_mint_nft(accounts, bidEntryNumber, program_id)
             }
-            SixtyFourGameInstruction::InitiatePlay { square, pubkey } => {
+            SixtyFourGameInstruction::InitiatePlay { square } => {
                 msg!("SixtyFourGameInstruction: InitiatePlay");
-                Self::process_initiate_play(accounts, square, pubkey, program_id)
+                Self::process_initiate_play(accounts, square, program_id)
             }
-            SixtyFourGameInstruction::EndPlay { square, pubkey } => {
+            SixtyFourGameInstruction::EndPlay { square } => {
                 msg!("SixtyFourGameInstruction: EndPlay");
-                Self::process_end_play(accounts, square, pubkey, program_id)
+                Self::process_end_play(accounts, square, program_id)
             }
-            SixtyFourGameInstruction::Attack { fromSquare, toSquare, fromPubkey } => {
+            SixtyFourGameInstruction::Attack { fromSquare, toSquare } => {
                 msg!("SixtyFourGameInstruction: Attack");
-                Self::process_attack(accounts, fromSquare, toSquare, fromPubkey, program_id)
+                Self::process_attack(accounts, fromSquare, toSquare, program_id)
             }
         }
     }
@@ -69,7 +69,6 @@ impl Processor {
     pub fn process_bid(
         accounts: &[AccountInfo],
         amount: u64,
-        pubkey: AccountInfo,
         program_id: &Pubkey,
     ) -> ProgramResult {
 
@@ -80,7 +79,6 @@ impl Processor {
 
     pub fn process_cancel_bid(
         accounts: &[AccountInfo],
-        pubkey: AccountInfo,
         program_id: &Pubkey,
     ) -> ProgramResult {
 
@@ -103,7 +101,6 @@ impl Processor {
     pub fn process_initiate_play(
         accounts: &[AccountInfo],
         square: u64,
-        pubkey: AccountInfo,
         program_id: &Pubkey,
     ) -> ProgramResult {
 
@@ -115,7 +112,6 @@ impl Processor {
     pub fn process_end_play(
         accounts: &[AccountInfo],
         square: u64,
-        pubkey: AccountInfo,
         program_id: &Pubkey,
     ) -> ProgramResult {
 
@@ -128,7 +124,6 @@ impl Processor {
         accounts: &[AccountInfo],
         fromSquare: u64,
         toSquare: u64,
-        fromSubkey: AccountInfo,
         program_id: &Pubkey,
     ) -> ProgramResult {
 
