@@ -1,7 +1,9 @@
-use solana_program::program_error::ProgramError;
 use std::convert::TryInto;
-
+use solana_sdk::{
+    program_error::ProgramError,
+};
 use crate::error::SixtyFourGameError::InvalidInstruction;
+
 
 pub enum SixtyFourGameInstruction {
     /// Bid - amount  - adds BidEntry to AuctionList

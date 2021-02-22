@@ -2,8 +2,8 @@
 use byteorder::{ByteOrder, BigEndian, LittleEndian};
 use solana_sdk::{
     account_info::{next_account_info, AccountInfo},
-    entrypoint_deprecated,
-    entrypoint_deprecated::ProgramResult,
+    entrypoint,
+    entrypoint::ProgramResult,
     msg,
     hash::{Hash, HASH_BYTES},
     program_error::ProgramError,
@@ -26,7 +26,6 @@ use crate::{
     error::SixtyFourGameError,
     instruction::SixtyFourGameInstruction,
     state::{BidEntry, AuctionList, GameSquare},
-    util::{unpack_mint, get_slot_hash}
 };
 
 pub struct Processor;

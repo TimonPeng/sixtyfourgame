@@ -1,5 +1,6 @@
-
-use solana_program::pubkey::Pubkey;
+use solana_sdk::{
+    pubkey::Pubkey,
+};
 
 pub struct BidEntry {
     pub amount_lamports: u64,
