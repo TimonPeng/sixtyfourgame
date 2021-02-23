@@ -119,7 +119,7 @@ async function loadStore() {
     return [store, programId, payerAccount, auctionListPubkey, treasuryPubkey];
 }
 
-async function saveStore(store, urlTls, programId, auctionListPubkey, payerSecretKey, treasuryPubkey) {
+async function saveStore(store, urlTls, programId, payerSecretKey, auctionListPubkey, treasuryPubkey) {
     try {
       await store.save('config.json', {
         url: urlTls,
@@ -169,8 +169,9 @@ export async function establishOwner(): Promise<void> {
     store,
     urlTls,
     programId,
+    payerSecretKey,
     auctionListPubkey,
-    payerSecretKey
+    treasuryPubkey,
   );
 }
 
@@ -179,30 +180,12 @@ export async function establishOwner(): Promise<void> {
  */
 export async function loadProgram(): Promise<void> {
 
+  let [store, programId, payerAccount, auctionListPubkey, treasuryPubkey] = await loadStore();
   let loaded = false;
-
-  const store = new Store();
-  try {
-    let config = await store.load('config.json');
-    if (config.programId !== "") {
-        programId = new PublicKey(config.programId);
-        console.log(programId.toBase58());
-    }
-    if (config.auctionListPubkey !== "") {
-        let auctionListPubkey = new PublicKey(config.auctionListPubkey);
-    }
-    payerSecretKey = config.payerSecretKey;
-    payerAccount = new Account(Buffer.from(payerSecretKey, "base64"));
-
-    let payerAccountSecretKey = Buffer.from(payerAccount.secretKey).toString("base64");
-    console.log('payerAccountSecretKey ', payerAccountSecretKey);
-
-    if (typeof programId !== 'undefined') {
-      await connection.getAccountInfo(programId);
-      console.log('Program already loaded to account ' + programId.toBase58());
-      loaded = true;
-    }
-  } catch (err) {
+  if (typeof programId !== 'undefined') {
+    await connection.getAccountInfo(programId);
+    console.log('Program already loaded to account ' + programId.toBase58());
+    loaded = true;
   }
 
   if (!loaded) {
@@ -230,48 +213,87 @@ export async function loadProgram(): Promise<void> {
       console.log('programAccountSecretKey ', programAccountSecretKey);
   }
 
-  // Create the auctionList account
-  const auctionListAccount = new Account();
-  const auctionListPubkey = auctionListAccount.publicKey;
-  console.log('Creating Auction List with address ', auctionListPubkey.toBase58(), ' for the game');
+  if (auctionListPubkey == "") {
+      // Create the auctionList account
+      const auctionListAccount = new Account();
+      auctionListPubkey = auctionListAccount.publicKey;
+      console.log('Creating Auction List with address ', auctionListPubkey.toBase58(), ' for the game');
 
-  let auctionListAccountSecretKey = Buffer.from(auctionListAccount.secretKey).toString("base64");
-  console.log('auctionListAccountSecretKey   ', auctionListAccountSecretKey);
+      let auctionListAccountSecretKey = Buffer.from(auctionListAccount.secretKey).toString("base64");
+      console.log('auctionListAccountSecretKey   ', auctionListAccountSecretKey);
 
-  // Account needs data for 64 pubkeys plus 64 lamport amounts in u64
-  let space = (1 * 32) + (1 * 8);
-  console.log('Auction List using ', space.toString(), ' allocated bytes');
+      // Account needs data for 64 pubkeys plus 64 lamport amounts in u64
+      let space = (1 * 32) + (1 * 8);
+      console.log('Auction List using ', space.toString(), ' allocated bytes');
 
-  // Get rent exempt amount of lamports
-  const lamports =  await connection.getMinimumBalanceForRentExemption(space);
-  console.log('Rent-exempt lamports for auction list: ',lamports.toString());
+      // Get rent exempt amount of lamports
+      const lamports =  await connection.getMinimumBalanceForRentExemption(space);
+      console.log('Rent-exempt lamports for auction list: ',lamports.toString());
 
-  // Create Auction List
-  const transaction = new Transaction().add(
-    SystemProgram.createAccount({
-      fromPubkey: payerAccount.publicKey,
-      newAccountPubkey: auctionListPubkey,
-      lamports,
-      space,
-      programId,
-    }),
-  );
-  await sendAndConfirmTransaction(
-    'createAccount',
-    connection,
-    transaction,
-    payerAccount,
-    auctionListAccount,
-  );
-
+      // Create Auction List
+      const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payerAccount.publicKey,
+          newAccountPubkey: auctionListPubkey,
+          lamports,
+          space,
+          programId,
+        }),
+      );
+      await sendAndConfirmTransaction(
+        'createAccount',
+        connection,
+        transaction,
+        payerAccount,
+        auctionListAccount,
+      );
+  }
   console.log("Auction List address: " + auctionListPubkey.toBase58());
+
+  if (typeof treasuryPubkey == "undefined" || treasuryPubkey == "") {
+      // Create the auctionList account
+      const treasuryAccount = new Account();
+      treasuryPubkey = treasuryAccount.publicKey;
+      console.log('Creating Treasury with address ', treasuryPubkey.toBase58(), ' for the game');
+
+      let treasuryAccountSecretKey = Buffer.from(treasuryAccount.secretKey).toString("base64");
+      console.log('treasuryAccountSecretKey   ', treasuryAccountSecretKey);
+
+      // Account needs no data
+      let space = 0;
+      console.log('Treasury using ', space.toString(), ' allocated bytes');
+
+      // Get rent exempt amount of lamports
+      const lamports =  await connection.getMinimumBalanceForRentExemption(space);
+      console.log('Rent-exempt lamports for Treasury: ',lamports.toString());
+
+      // Create Auction List
+      const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payerAccount.publicKey,
+          newAccountPubkey: treasuryPubkey,
+          lamports,
+          space,
+          programId,
+        }),
+      );
+      await sendAndConfirmTransaction(
+        'createAccount',
+        connection,
+        transaction,
+        payerAccount,
+        treasuryAccount,
+      );
+  }
+  console.log("Treasury address: " + treasuryPubkey.toBase58());
 
   await saveStore(
     store,
     urlTls,
     programId,
+    payerSecretKey,
     auctionListPubkey,
-    payerSecretKey
+    treasuryPubkey,
   );
 }
 
