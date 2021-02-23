@@ -20,12 +20,10 @@ export class Store {
 
   async save(uri: string, config: Object): Promise<void> {
     try {
-      console.log(this.dir);
+      // mkdirp not working locally
       // await mkdirp(this.dir);
       // console.log('dir made');
       const filename = path.join(this.dir, uri);
-      console.log(filename);
-      console.log(config);
       await fs.writeFile(filename, JSON.stringify(config), 'utf8');
     } catch (err) {
       console.log(err);

@@ -12,20 +12,19 @@ publish = false
 num-derive = "0.3"
 num-traits = "0.2"
 bytemuck = "1.4.0"
-thiserror = "1.0.21"
+arrayref = "0.3.6"
+solana-sdk = { version = "1.4.5", default-features = false, optional = true }
 byteorder = "1.3"
-solana-sdk = { version = "1.5.0", default-features = false, optional = true }
+solana-program = "1.5.0"
+thiserror = "1.0.21"
 spl-token = {version = "3.0.1", features = ["no-entrypoint"]}
 
 [features]
 test-bpf = []
 no-entrypoint = []
-program = ["solana-sdk/program", "spl-token/no-entrypoint"]
+program = ["solana-sdk/program"]
 default = ["solana-sdk/default"]
 
-[dev-dependencies]
-assert_matches = "1.4.0"
-tokio = { version = "0.3", features = ["macros"]}
-
 [lib]
+name="sixtyfourgame"
 crate-type = ["cdylib", "lib"]

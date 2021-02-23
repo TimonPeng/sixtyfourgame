@@ -5,7 +5,6 @@ use solana_sdk::{
     entrypoint,
     entrypoint::ProgramResult,
     msg,
-    hash::{Hash, HASH_BYTES},
     program_error::ProgramError,
     pubkey::Pubkey,
     sysvar::{
@@ -14,9 +13,9 @@ use solana_sdk::{
 };
 
 use solana_sdk::program::invoke_signed;
-use spl_token::{instruction};
+// use spl_token::{instruction};
 use solana_sdk::program_pack::Pack as TokenPack;
-use spl_token::state::{Account as TokenAccount, Mint};
+// use spl_token::state::{Account as TokenAccount, Mint};
 
 use num_derive::FromPrimitive;
 use solana_sdk::{decode_error::DecodeError};
@@ -25,7 +24,7 @@ use thiserror::Error;
 use crate::{
     error::SixtyFourGameError,
     instruction::SixtyFourGameInstruction,
-    state::{BidEntry, AuctionList, GameSquare},
+    state::{BidEntry, GameSquare},
 };
 
 pub struct Processor;
@@ -71,8 +70,29 @@ impl Processor {
         program_id: &Pubkey,
     ) -> ProgramResult {
 
-        msg!("Bid successful");
+        let samount = amount.to_string();
+        let amount_str: &str = &samount;
+        msg!("Bid Amount: ");
+        msg!(amount_str);
 
+        let accounts_iter = &mut accounts.iter();
+        // Set accounts
+        let bidder_account = next_account_info(accounts_iter)?;
+        let auction_list_account = next_account_info(accounts_iter)?;
+
+        // Save a BidEntry into the auction list account
+        let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow())?;
+
+        msg!("Got auction list");
+
+        auction_list_info.amount_lamports = amount;
+        auction_list_info.bidder_pubkey = *bidder_account.key;
+
+        msg!("Saving auction list");
+
+        BidEntry::pack(auction_list_info, &mut auction_list_account.data.borrow_mut())?;
+
+        msg!("Bid successful");
         Ok(())
     }
 

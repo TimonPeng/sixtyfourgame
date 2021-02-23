@@ -33,10 +33,10 @@
   },
   "devDependencies": {
     "@solana/spl-token": "^0.0.11",
+    "@solana/web3.js": "^0.89.1",
     "prettier": "^2.0.2"
   },
   "dependencies": {
-    "@solana/web3.js": "^0.86.2",
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.3",
     "babel-eslint": "^10.0.1",

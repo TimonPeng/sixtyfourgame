@@ -27,6 +27,8 @@ import * as BufferLayout from 'buffer-layout';
 
 import {url, urlTls} from '../url';
 import {Store} from './util/store';
+
+import {sleep} from './util/sleep';
 import {newAccountWithLamports} from './util/new-account-with-lamports';
 import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 
@@ -54,8 +56,7 @@ let payerSecretKey;
 let programId: PublicKey;
 let auctionListPubkey: PublicKey;
 
-const pathToProgram = 'dist/program/debug/libsixtyfourgame.so';
-
+const pathToProgram = 'dist/program/sixtyfourgame.so';
 
 /**
  * Establish a connection to the cluster
@@ -84,7 +85,6 @@ function createSplAccount(
       programId: TOKEN_PROGRAM_ID,
     })
   );
-
   instructions.push(
     Token.createInitAccountInstruction(
       TOKEN_PROGRAM_ID,
@@ -93,31 +93,51 @@ function createSplAccount(
       owner
     )
   );
-
   return account;
 }
 
+async function loadStore() {
+    const store = new Store();
+    let auctionListPubkey;
+    let treasuryPubkey;
+    try {
+      let config = await store.load('config.json');
+      if (config.programId !== "") {
+          programId = new PublicKey(config.programId);
+      }
+      if (config.auctionListPubkey !== "") {
+          auctionListPubkey = new PublicKey(config.auctionListPubkey);
+      }
+      if (config.treasuryPubkey !== "") {
+          treasuryPubkey = new PublicKey(config.treasuryPubkey);
+      }
+      payerSecretKey = config.payerSecretKey;
+      payerAccount = new Account(Buffer.from(payerSecretKey, "base64"));
+    } catch (err) {
+      console.log(err);
+    }
+    return [store, programId, payerAccount, auctionListPubkey, treasuryPubkey];
+}
+
+async function saveStore(store, urlTls, programId, auctionListPubkey, payerSecretKey, treasuryPubkey) {
+    try {
+      await store.save('config.json', {
+        url: urlTls,
+        programId: typeof programId !== 'undefined' ? programId.toBase58() : '',
+        auctionListPubkey: typeof auctionListPubkey !== 'undefined' ? auctionListPubkey.toBase58() : '',
+        treasuryPubkey: typeof treasuryPubkey !== 'undefined' ? treasuryPubkey.toBase58() : '',
+        payerSecretKey: payerSecretKey,
+      });
+    } catch (err) {
+      console.log(err);
+    }
+}
 
 /**
  * Establish an account that owns every account deployed
  */
 export async function establishOwner(): Promise<void> {
-
-  const store = new Store();
-  try {
-    let config = await store.load('config.json');
-    if (config.programId !== "") {
-        programId = new PublicKey(config.programId);
-        console.log(programId.toBase58());
-    }
-    if (config.auctionListPubkey !== "") {
-        let auctionListPubkey = new PublicKey(config.auctionListPubkey);
-    }
-    payerSecretKey = config.payerSecretKey;
-    payerAccount = new Account(Buffer.from(payerSecretKey, "base64"));
-  } catch (err) {
-    console.log(err);
-  }
+  let [store, programId, payerAccount, auctionListPubkey, treasuryPubkey] = await loadStore();
 
   if (!payerAccount) {
     let fees = 0;
@@ -143,17 +163,15 @@ export async function establishOwner(): Promise<void> {
     'Sol to pay for fees',
   );
 
-  try {
-    // Save this info for next time
-    await store.save('config.json', {
-      url: urlTls,
-      programId: programId.toBase58(),
-      auctionListPubkey: typeof auctionListPubkey !== 'undefined' ? auctionListPubkey.toBase58() : '',
-      payerSecretKey: payerSecretKey,
-    });
-  } catch (err) {
-    console.log(err);
-  }
+  await sleep(1000);
+
+  await saveStore(
+    store,
+    urlTls,
+    programId,
+    auctionListPubkey,
+    payerSecretKey
+  );
 }
 
 /**
@@ -168,18 +186,23 @@ export async function loadProgram(): Promise<void> {
     let config = await store.load('config.json');
     if (config.programId !== "") {
         programId = new PublicKey(config.programId);
+        console.log(programId.toBase58());
     }
-    console.log(programId.toBase58());
     if (config.auctionListPubkey !== "") {
         let auctionListPubkey = new PublicKey(config.auctionListPubkey);
     }
     payerSecretKey = config.payerSecretKey;
     payerAccount = new Account(Buffer.from(payerSecretKey, "base64"));
-    await connection.getAccountInfo(programId);
-    console.log('Program already loaded to account ' + programId.toBase58());
-    loaded = true;
+
+    let payerAccountSecretKey = Buffer.from(payerAccount.secretKey).toString("base64");
+    console.log('payerAccountSecretKey ', payerAccountSecretKey);
+
+    if (typeof programId !== 'undefined') {
+      await connection.getAccountInfo(programId);
+      console.log('Program already loaded to account ' + programId.toBase58());
+      loaded = true;
+    }
   } catch (err) {
-    console.log(err);
   }
 
   if (!loaded) {
@@ -212,8 +235,11 @@ export async function loadProgram(): Promise<void> {
   const auctionListPubkey = auctionListAccount.publicKey;
   console.log('Creating Auction List with address ', auctionListPubkey.toBase58(), ' for the game');
 
+  let auctionListAccountSecretKey = Buffer.from(auctionListAccount.secretKey).toString("base64");
+  console.log('auctionListAccountSecretKey   ', auctionListAccountSecretKey);
+
   // Account needs data for 64 pubkeys plus 64 lamport amounts in u64
-  let space = (64 * 32) + (64 * 8);
+  let space = (1 * 32) + (1 * 8);
   console.log('Auction List using ', space.toString(), ' allocated bytes');
 
   // Get rent exempt amount of lamports
@@ -240,17 +266,13 @@ export async function loadProgram(): Promise<void> {
 
   console.log("Auction List address: " + auctionListPubkey.toBase58());
 
-  try {
-    // Save this info for next time
-    await store.save('config.json', {
-      url: urlTls,
-      programId: typeof programId !== 'undefined' ? programId.toBase58() : '',
-      auctionListPubkey: typeof auctionListPubkey !== 'undefined' ? auctionListPubkey.toBase58() : '',
-      payerSecretKey: payerSecretKey,
-    });
-  } catch (err) {
-    console.log(err);
-  }
+  await saveStore(
+    store,
+    urlTls,
+    programId,
+    auctionListPubkey,
+    payerSecretKey
+  );
 }
 
 function longToByteArray(/*long*/long) {
