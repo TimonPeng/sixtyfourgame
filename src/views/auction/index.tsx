@@ -38,6 +38,7 @@ export const AuctionView = () => {
   const [bidAmount, setBidAmount] = React.useState(1);
   const [currentBidder, setCurrentBidder] = React.useState("");
   const [currentBidAmount, setCurrentBidAmount] = React.useState(0);
+  const [auctionActive, setAuctionActive] = React.useState(1);
 
 
   const [auctionEndSlot, setAuctionEndSlot] = React.useState("");
@@ -108,11 +109,15 @@ export const AuctionView = () => {
           var currentSlot: any = await getCurrentSlot(
               connection
           );
-          setAuctionEndSlot(auctionEndSlot);
           var min = ((auctionEndSlot - currentSlot) * 0.4 / 60).toFixed(2);
-          setAuctionEndTime(min);
+          if (parseFloat(min) < 0) {
+              setAuctionActive(0);
+          } else {
+              setAuctionEndSlot(auctionEndSlot);
+              setAuctionEndTime(min);
+          }
       })();
-  }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder, setAuctionEndSlot, setAuctionEndTime, auctionEndSlotPubkey]);
+  }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder, setAuctionEndSlot, setAuctionEndTime, auctionEndSlotPubkey, setAuctionActive]);
 
   if(refresh) {
     setRefresh(0);
@@ -129,11 +134,14 @@ export const AuctionView = () => {
       <Col span={24}>
           <h4>Current bidder: {currentBidder}</h4>
           <h4>Current bid amount: {currentBidAmount / LAMPORTS_PER_SOL} SOL</h4>
-
-          <h4>Auction ends at slot {auctionEndSlot} (approx {auctionEndTime} mintues)</h4>
+          { auctionActive ?
+              <h4>Auction ends at slot {auctionEndSlot} (approx {auctionEndTime} mintues)</h4>
+              :
+              <h4>Auction ended</h4>
+          }
       </Col>
 
-      { connected ?
+      { connected && auctionActive &&
         (<Col span={24}>
           <h3>Create New Bid</h3>
           <form onSubmit={handleSubmit}>
@@ -143,8 +151,10 @@ export const AuctionView = () => {
             </label>
             <input className="text-black" type="submit" value="Submit" />
           </form>
-        </Col>) : (
-        <Col span={24}>
+        </Col>)
+      }
+      { !connected && !auctionActive &&
+        (<Col span={24}>
           <ConnectButton
             type="text"
             size="large"
@@ -153,6 +163,15 @@ export const AuctionView = () => {
           />
         </Col>)
       }
+      { connected && !auctionActive &&
+        (<Col span={24}>
+          <h3>Claim your Game Square!</h3>
+          <form onSubmit={handleSubmit}>
+            <input className="text-black" type="submit" value="Claim" />
+          </form>
+        </Col>)
+      }
+
       { connected ?
         (<Col span={24}>
             <h3>My Bid</h3>
