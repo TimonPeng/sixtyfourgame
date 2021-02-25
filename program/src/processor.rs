@@ -24,7 +24,7 @@ use thiserror::Error;
 use crate::{
     error::SixtyFourGameError,
     instruction::SixtyFourGameInstruction,
-    state::{BidEntry, GameSquare},
+    state::{BidEntry, AuctionEndSlot, GameSquare},
 };
 
 pub struct Processor;
@@ -37,6 +37,10 @@ impl Processor {
         let instruction = SixtyFourGameInstruction::unpack(instruction_data)?;
 
         match instruction {
+            SixtyFourGameInstruction::InititateAuction { auction_end_slot } => {
+                msg!("SixtyFourGameInstruction: InititateAuction");
+                Self::process_auction_end_slot(accounts, auction_end_slot, program_id)
+            }
             SixtyFourGameInstruction::Bid { amount } => {
                 msg!("SixtyFourGameInstruction: Bid");
                 Self::process_bid(accounts, amount, program_id)
@@ -62,6 +66,42 @@ impl Processor {
                 Self::process_attack(accounts, fromSquare, toSquare, program_id)
             }
         }
+    }
+
+    pub fn process_auction_end_slot(
+        accounts: &[AccountInfo],
+        auction_end_slot: u64,
+        program_id: &Pubkey,
+    ) -> ProgramResult {
+
+        let sauction_end_slot = auction_end_slot.to_string();
+        let auction_end_slot_str: &str = &sauction_end_slot;
+        msg!("Setting Auction End Slot to:");
+        msg!(auction_end_slot_str);
+
+        let accounts_iter = &mut accounts.iter();
+
+        // Set accounts
+        let auction_end_slot_account = next_account_info(accounts_iter)?;
+
+        // Save a BidEntry into the auction list account
+        let mut auction_end_slot_info = AuctionEndSlot::unpack_unchecked(&auction_end_slot_account.data.borrow())?;
+
+        // TODO; admin only
+        if auction_end_slot_info.auction_enabled {
+            msg!("Auction already started");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        auction_end_slot_info.auction_end_slot = auction_end_slot;
+        auction_end_slot_info.auction_enabled = true;
+
+        msg!("Saving auction end slot");
+
+        AuctionEndSlot::pack(auction_end_slot_info, &mut auction_end_slot_account.data.borrow_mut())?;
+
+        msg!("AuctionEndSlot successful");
+        Ok(())
     }
 
     pub fn process_bid(

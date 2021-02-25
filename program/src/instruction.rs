@@ -6,6 +6,11 @@ use crate::error::SixtyFourGameError::InvalidInstruction;
 
 
 pub enum SixtyFourGameInstruction {
+
+    /// InititateAuction - auction_end_slot - sets the auction end slot
+    InititateAuction {
+        auction_end_slot: u64
+    },
     /// Bid - amount  - adds BidEntry to AuctionList
     Bid {
         amount: u64,
@@ -38,20 +43,23 @@ impl SixtyFourGameInstruction {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
-            0 => Self::Bid {
+            0 => Self::InititateAuction {
+                auction_end_slot: Self::unpack_amount(rest)?,
+            },
+            1 => Self::Bid {
                 amount: Self::unpack_amount(rest)?,
             },
-            1 => Self::CancelBid {},
-            2 => Self::MintNFT {
+            2 => Self::CancelBid {},
+            3 => Self::MintNFT {
                 bidEntryNumber: Self::unpack_amount(rest)?,
             },
-            3 => Self::InitiatePlay {
+            4 => Self::InitiatePlay {
                 square: Self::unpack_amount(rest)?,
             },
-            4 => Self::EndPlay {
+            5 => Self::EndPlay {
                 square: Self::unpack_amount(rest)?,
             },
-            5 => Self::Attack {
+            6 => Self::Attack {
                 fromSquare: Self::unpack_amount(rest)?,
                 toSquare: Self::unpack_amount(rest)?,
             },

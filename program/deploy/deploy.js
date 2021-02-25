@@ -38,23 +38,10 @@ import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 let connection: Connection;
 
 /**
- * Accounts
- */
-let programAccount: Account;
-let payerAccount: Account;
-
-/**
  * Secret Keys
  */
-let programSecretKey;
 let payerSecretKey;
 
-
-/**
- * Public Keys
- */
-let programId: PublicKey;
-let auctionListPubkey: PublicKey;
 
 const pathToProgram = 'dist/program/sixtyfourgame.so';
 
@@ -98,6 +85,8 @@ function createSplAccount(
 
 async function loadStore() {
     const store = new Store();
+    let payerAccount;
+    let programId;
     let auctionListPubkey;
     let treasuryPubkey;
     try {
@@ -111,22 +100,25 @@ async function loadStore() {
       if (config.treasuryPubkey !== "") {
           treasuryPubkey = new PublicKey(config.treasuryPubkey);
       }
-      payerSecretKey = config.payerSecretKey;
-      payerAccount = new Account(Buffer.from(payerSecretKey, "base64"));
+      let payerAccountSecretKey = config.payerSecretKey;
+      if (payerAccountSecretKey !== "") {
+          payerAccount = new Account(Buffer.from(config.payerSecretKey, "base64"));
+      }
     } catch (err) {
       console.log(err);
     }
     return [store, programId, payerAccount, auctionListPubkey, treasuryPubkey];
 }
 
-async function saveStore(store, urlTls, programId, payerSecretKey, auctionListPubkey, treasuryPubkey) {
+async function saveStore(store, urlTls, programId, payerSecretKey, auctionListPubkey, treasuryPubkey, auctionEndSlotPubkey) {
     try {
       await store.save('config.json', {
         url: urlTls,
         programId: typeof programId !== 'undefined' ? programId.toBase58() : '',
         auctionListPubkey: typeof auctionListPubkey !== 'undefined' ? auctionListPubkey.toBase58() : '',
+        auctionEndSlotPubkey: typeof auctionEndSlotPubkey !== 'undefined' ? auctionEndSlotPubkey.toBase58() : '',
         treasuryPubkey: typeof treasuryPubkey !== 'undefined' ? treasuryPubkey.toBase58() : '',
-        payerSecretKey: payerSecretKey,
+        payerSecretKey: typeof payerSecretKey !== 'undefined' ? payerSecretKey : ''
       });
     } catch (err) {
       console.log(err);
@@ -150,6 +142,7 @@ export async function establishOwner(): Promise<void> {
     // Fund a new payer via airdrop
     payerAccount = await newAccountWithLamports(connection, fees);
     payerSecretKey = Buffer.from(payerAccount.secretKey).toString("base64");
+    console.log('payerAccountSecretKey ', payerSecretKey);
   } else {
     console.log("Payer account loaded");
   }
@@ -163,27 +156,25 @@ export async function establishOwner(): Promise<void> {
     'Sol to pay for fees',
   );
 
-  let payerAccountSecretKey = Buffer.from(payerAccount.secretKey).toString("base64");
-  console.log('payerAccountSecretKey ', payerAccountSecretKey);
-
-  await sleep(1000);
+  // Sleep to wait for airdrops
+  sleep(1000);
 
   await saveStore(
     store,
     urlTls,
     programId,
     payerSecretKey,
-    auctionListPubkey,
     treasuryPubkey,
+    auctionListPubkey,
   );
 }
 
 /**
- * Load the hello world BPF program if not already loaded
+ * Load the BPF program if not already loaded
  */
 export async function loadProgram(): Promise<void> {
 
-  let [store, programId, payerAccount, auctionListPubkey, treasuryPubkey] = await loadStore();
+  let [store, programId, payerAccount, auctionListPubkey, treasuryPubkey, auctionEndSlotPubkey] = await loadStore();
   let loaded = false;
   if (typeof programId !== 'undefined') {
     await connection.getAccountInfo(programId);
@@ -195,10 +186,10 @@ export async function loadProgram(): Promise<void> {
       // Load the program
       console.log('Loading sixtyfourgame program...');
       const data = await fs.readFile(pathToProgram);
-      programAccount = new Account();
-
+      let programAccount = new Account();
       console.log(payerAccount.publicKey.toBase58());
       console.log(programAccount.publicKey.toBase58());
+
       try {
           await BpfLoader.load(
               connection,
@@ -288,13 +279,50 @@ export async function loadProgram(): Promise<void> {
   }
   console.log("Treasury address: " + treasuryPubkey.toBase58());
 
+  if (typeof auctionEndSlotPubkey == "undefined" || auctionEndSlotPubkey == "") {
+      // Create the auctionList account
+      const auctionEndSlotAccount = new Account();
+      auctionEndSlotPubkey = auctionEndSlotAccount.publicKey;
+      console.log('Creating auctionEndSlot with address ', auctionEndSlotPubkey.toBase58(), ' for the game');
+
+      let auctionEndSlotAccountSecretKey = Buffer.from(auctionEndSlotAccount.secretKey).toString("base64");
+      console.log('auctionEndSlotAccountSecretKey   ', auctionEndSlotAccountSecretKey);
+
+      // Account needs 8 bytes for u64 slot end
+      let space = 8;
+      console.log('auctionEndSlot using ', space.toString(), ' allocated bytes');
+
+      // Get rent exempt amount of lamports
+      const lamports =  await connection.getMinimumBalanceForRentExemption(space);
+      console.log('Rent-exempt lamports for auctionEndSlot: ',lamports.toString());
+
+      // Create Auction List
+      const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payerAccount.publicKey,
+          newAccountPubkey: auctionEndSlotPubkey,
+          lamports,
+          space,
+          programId,
+        }),
+      );
+      await sendAndConfirmTransaction(
+        'createAccount',
+        connection,
+        transaction,
+        payerAccount,
+        auctionEndSlotAccount,
+      );
+  }
+  console.log("auctionEndSlot address: " + auctionEndSlotPubkey.toBase58());
+
   await saveStore(
     store,
     urlTls,
     programId,
     payerSecretKey,
-    auctionListPubkey,
     treasuryPubkey,
+    auctionListPubkey,
   );
 }
 

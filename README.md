@@ -29,22 +29,24 @@ Players can sell their game square NFTs in the marketplace for SOL
 
 # SFG Program Instructions:
 ```
-SFGInstruction::Bid(amount, ownerKey)
+SFGInstruction::InitiateAuction(auction_end_slot)
+- Saves the auction_end_slot
+- Can only be set once
+
+SFGInstruction::Bid(amount)
 - Creates a BidEntry into the AuctionList (SOL lamports amount, pub key)  
-- Can only be done by ownerKey
 - Can only be done if before auction_end_block_number
 - Use PDA for holding SOL funds
 
-SFGInstruction::CancelBid(ownerKey)
-- Cancels a BidEntry in the AuctionList
-- Can only be done by ownerKey
+SFGInstruction::CancelBid()
+- Cancels a BidEntry in the AuctionList (pubkey of signer only)
 - Can only be done if before auction_end_block_number
 - Send back SOL funds
 
 SFGInstruction::MintNFT(bidEntryNumber)
-- Mints NFT for a BidEntry, sends SOL to Treasury
+- Mints NFT for a BidEntry and sends to saved pubkey
 - Can only be done if auction_end_block_number is passed
-- Can only be done by admin owner
+- Can only be done by anyone
 
 SFGInstruction::InitiatePlay(square)
 - Deposit NFT to initiate play
