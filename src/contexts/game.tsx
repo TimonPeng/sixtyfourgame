@@ -101,9 +101,6 @@ export const getAuctionList = async (
     try {
         let info = await getAccountInfo(connection, auctionListPubkey);
 
-        console.log("info is");
-        console.log(info);
-
         const amount_lamports = info.data.slice(0, 7);
         const amount_lamports_int = byteArrayToLong(amount_lamports);
 
@@ -124,6 +121,33 @@ export const getAuctionList = async (
         amount: amount,
         bidder: bidder,
     };
+};
+
+export const getAuctionEndSlot = async (
+  connection: Connection,
+  auctionEndSlotPubkey: PublicKey,
+) => {
+    var auction_end_slot = 0;
+    try {
+        let info = await getAccountInfo(connection, auctionEndSlotPubkey);
+        const auction_end_slot_bytes = info.data.slice(0, 7);
+        auction_end_slot = byteArrayToLong(auction_end_slot_bytes);
+    } catch (err) {
+        console.log(err);
+    }
+    return auction_end_slot;
+};
+
+export const getCurrentSlot = async (
+  connection: Connection
+) => {
+    var lastSlot = 0;
+    try {
+        lastSlot = await connection.getSlot();
+    } catch (err) {
+        console.log(err);
+    }
+    return lastSlot;
 };
 
 export const sendTransaction = async (

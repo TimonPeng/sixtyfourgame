@@ -8,7 +8,7 @@ import { useConnection, useConnectionConfig } from "../../contexts/connection";
 import { useWallet } from "../../contexts/wallet";
 import { useMarkets } from "../../contexts/market";
 import { formatNumber } from "../../utils/utils";
-import { getAuctionList, sendBidSequence } from "../../contexts/game"
+import { getAuctionList, getAuctionEndSlot, getCurrentSlot, sendBidSequence } from "../../contexts/game"
 import { Store } from "../../store"
 
 import {
@@ -17,10 +17,11 @@ import {
 } from '@solana/web3.js';
 
 
-let programId = new PublicKey("4Hh4rQzHDCtwGZ8gzqTsYkYjVyuRNhnW8WFuWjzqyjqM");
-let payerAccount = new Account(Buffer.from("oY+l5UZq8zKs2AW8uNYkv5Q87/0E4gvsOywtkbRYOu1radCIrCpLGvCaR0nisKTB5AHfe+oCR+o5qoBNZbUVOw==", "base64"));
-let auctionListPubkey = new PublicKey("7sk6uC9C5kfCc6Cs9sEqA5Ai1wUhYVpejtqJWQngc8b5");
-let treasuryPubkey = new PublicKey("7oSLdzAxooNwS1e1udPLK84uTgkwHdG3AGoXay254nxc");
+let programId = new PublicKey("FFqrthdm5avrqCgzZA2jujC6s6BA5EP4o2AFV66zUtPf");
+let payerAccount = new Account(Buffer.from("cdXW9rWyRG0FMUZxy1tarWYxgTzCVTfbTRQ/i8u7HILv9kCDat3uWxF4GiJ90MRmmW3j1PcPW799JJuK/fqcrQ==", "base64"));
+let auctionListPubkey = new PublicKey("6wAVQBw1hA27sjTsipHrB3kVsJLX3de34V9gKjkmJegM");
+let treasuryPubkey = new PublicKey("Fk2oACX9pHVrobLRAsraU96DhpPRL7dzhBTdwWu5fZJq");
+let auctionEndSlotPubkey = new PublicKey("fjVbpsRbgdUjPorLBLvhmXRzfnce5JcHmGJ4s3E5ein");
 
 export const AuctionView = () => {
 
@@ -30,9 +31,14 @@ export const AuctionView = () => {
   const { tokenMap } = useConnectionConfig();
   const { account } = useNativeAccount();
 
+  const [refresh, setRefresh] = React.useState(0);
   const [bidAmount, setBidAmount] = React.useState(1);
   const [currentBidder, setCurrentBidder] = React.useState("");
   const [currentBidAmount, setCurrentBidAmount] = React.useState(0);
+
+
+  const [auctionEndSlot, setAuctionEndSlot] = React.useState("");
+  const [auctionEndTime, setAuctionEndTime] = React.useState("");
 
   const balance = useMemo(
     () => formatNumber.format((account?.lamports || 0) / LAMPORTS_PER_SOL),
@@ -88,10 +94,24 @@ export const AuctionView = () => {
           console.log(auctionData)
           setCurrentBidder(auctionData.bidder);
           setCurrentBidAmount(auctionData.amount);
-      })();
-  }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder]);
 
-  handleUpdateAuctionList();
+          var auctionEndSlot: any = await getAuctionEndSlot(
+              connection,
+              auctionEndSlotPubkey
+          );
+          var currentSlot: any = await getCurrentSlot(
+              connection
+          );
+          setAuctionEndSlot(auctionEndSlot);
+          var min = ((auctionEndSlot - currentSlot) * 0.4 / 60).toFixed(2);
+          setAuctionEndTime(min);
+      })();
+  }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder, setAuctionEndSlot, setAuctionEndTime, auctionEndSlotPubkey]);
+
+  if(refresh) {
+    setRefresh(1);
+    handleUpdateAuctionList();
+  }
 
   return (
     <Row gutter={[16, 16]} align="middle">
@@ -103,6 +123,8 @@ export const AuctionView = () => {
       <Col span={24}>
           <h4>Current bidder: {currentBidder}</h4>
           <h4>Current bid amount: {currentBidAmount / LAMPORTS_PER_SOL} SOL</h4>
+
+          <h4>Auction ends at slot {auctionEndSlot} (approx {auctionEndTime} mintues)</h4>
       </Col>
 
       { connected ?
