@@ -9,6 +9,7 @@ import { useWallet } from "../../contexts/wallet";
 import { useMarkets } from "../../contexts/market";
 import { formatNumber } from "../../utils/utils";
 import { getAuctionList, sendBidSequence } from "../../contexts/game"
+import { Store } from "../../store"
 
 import {
   Account,
@@ -16,9 +17,10 @@ import {
 } from '@solana/web3.js';
 
 
-let programId = new PublicKey("2RceTnuNTdqmoRxhr9KYnTXAE68SUeY2SuUYcBWCFwCr");
-let payerAccount = new Account(Buffer.from("87DFfMZoettyDb83uDd+I1K0cvYtAW1ursJFEqSCWuNim27LfpqZNmZzwHkqMM/dHdIfxjS+XP3ETx0GofndfA==", "base64"));
-let auctionListAccount = new Account(Buffer.from("PN0sTt9Za248cpx/5RJYRmQTAq4G+7aF+aTtHn7C2rJqScRF27/TWUs0OcwvcZ0vEF/B2G8yS75xoe35P90L6g==", "base64"));
+let programId = new PublicKey("4Hh4rQzHDCtwGZ8gzqTsYkYjVyuRNhnW8WFuWjzqyjqM");
+let payerAccount = new Account(Buffer.from("oY+l5UZq8zKs2AW8uNYkv5Q87/0E4gvsOywtkbRYOu1radCIrCpLGvCaR0nisKTB5AHfe+oCR+o5qoBNZbUVOw==", "base64"));
+let auctionListPubkey = new PublicKey("7sk6uC9C5kfCc6Cs9sEqA5Ai1wUhYVpejtqJWQngc8b5");
+let treasuryPubkey = new PublicKey("7oSLdzAxooNwS1e1udPLK84uTgkwHdG3AGoXay254nxc");
 
 export const AuctionView = () => {
 
@@ -68,12 +70,12 @@ export const AuctionView = () => {
                   connection,
                   programId,
                   payerAccount,
-                  auctionListAccount
+                  auctionListPubkey,
+                  treasuryPubkey
               );
           })();
       }
-  }, [connected, bidAmount, wallet, connection, programId, payerAccount, auctionListAccount]);
-
+  }, [connected, bidAmount, wallet, connection, programId, payerAccount, auctionListPubkey, treasuryPubkey]);
 
   const handleUpdateAuctionList = React.useCallback(() => {
       console.log('getting auction list');
@@ -81,13 +83,13 @@ export const AuctionView = () => {
           type BidEntry = { amount: number; bidder: string };
           var auctionData: BidEntry = await getAuctionList(
               connection,
-              auctionListAccount
+              auctionListPubkey
           );
           console.log(auctionData)
           setCurrentBidder(auctionData.bidder);
           setCurrentBidAmount(auctionData.amount);
       })();
-  }, [connected, connection, auctionListAccount, setCurrentBidAmount, setCurrentBidder]);
+  }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder]);
 
   handleUpdateAuctionList();
 

@@ -163,6 +163,9 @@ export async function establishOwner(): Promise<void> {
     'Sol to pay for fees',
   );
 
+  let payerAccountSecretKey = Buffer.from(payerAccount.secretKey).toString("base64");
+  console.log('payerAccountSecretKey ', payerAccountSecretKey);
+
   await sleep(1000);
 
   await saveStore(
@@ -209,11 +212,9 @@ export async function loadProgram(): Promise<void> {
       }
       programId = programAccount.publicKey;
       console.log('Program loaded to', programId.toBase58());
-      let programAccountSecretKey = Buffer.from(programAccount.secretKey).toString("base64");
-      console.log('programAccountSecretKey ', programAccountSecretKey);
   }
 
-  if (auctionListPubkey == "") {
+  if (typeof auctionListPubkey == "undefined" || auctionListPubkey == "") {
       // Create the auctionList account
       const auctionListAccount = new Account();
       auctionListPubkey = auctionListAccount.publicKey;

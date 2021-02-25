@@ -10,7 +10,7 @@
   "author": "Mike Tourigny",
   "license": "Apache 2.0",
   "scripts": {
-    "start": "babel-node deploy/main.js",
+    "start": "babel-node deploy/main.js && cp store/config.json ../src/",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run lint -- --fix",
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",

@@ -14,6 +14,7 @@ import {
 import {AccountLayout, u64, MintInfo, MintLayout, Token} from "@solana/spl-token";
 import React, { useContext, useEffect, useMemo } from "react";
 
+// TODO: move to util
 const longToByteArray = function(long: any) {
     var byteArray = [0, 0, 0, 0, 0, 0, 0, 0];
     for ( var index = 0; index < byteArray.length; index ++ ) {
@@ -24,55 +25,6 @@ const longToByteArray = function(long: any) {
     return byteArray;
 };
 
-export const sendBidSequence = async (
-  amount: any,
-  wallet: any,
-  connection: any,
-  programId: PublicKey,
-  payerAccount: Account,
-  auctionListAccount: Account,
-) => {
-
-    // Create new bid transaction
-    let transaction = new Transaction();
-    const instruction = new TransactionInstruction({
-        keys: [{pubkey: wallet.publicKey, isSigner: true, isWritable: true},
-               {pubkey: auctionListAccount.publicKey, isSigner: false, isWritable: true}],
-        programId,
-        data: Buffer.from([0, ...longToByteArray(amount * LAMPORTS_PER_SOL)]),
-    });
-    transaction.add(instruction);
-
-    console.log('Sending Bid transaction');
-    await sendTransaction(connection, wallet, transaction, true);
-    console.log('Bid transaction sent');
-};
-
-
-const getAccountInfo = async (connection: Connection, pubKey: PublicKey) => {
-  const info = await connection.getAccountInfo(pubKey, "recent");
-  if (info === null) {
-    throw new Error("Failed to get account info");
-  }
-  return info;
-};
-
-function Int64ToString(bytes:any, isSigned:any) {
-    const isNegative = isSigned && bytes.length > 0 && bytes[0] >= 0x80;
-    var digits: any = [];
-    bytes.forEach((byte: any, j: any) => {
-      if(isNegative)
-        byte = 0x100 - (j == bytes.length - 1 ? 0 : 1) - byte;
-      for(let i = 0; byte > 0 || i < digits.length; i++) {
-        byte += (digits[i] || 0) * 0x100;
-        digits[i] = byte % 10;
-        byte = (byte - digits[i]) / 10;
-      }
-    });
-    return (isNegative ? '-' : '') + digits.reverse().join('');
-}
-
-
 function byteArrayToLong(byteArray: any) {
     var value = 0;
     for ( var i = byteArray.length - 1; i >= 0; i--) {
@@ -82,17 +34,72 @@ function byteArrayToLong(byteArray: any) {
     return value;
 };
 
+export const sendBidSequence = async (
+  amount: any,
+  wallet: any,
+  connection: any,
+  programId: PublicKey,
+  payerAccount: Account,
+  auctionListPubkey: PublicKey,
+  treasuryPubkey: PublicKey,
+) => {
 
+    // Create new game fund account
+    let transaction = new Transaction();
+    let treasuryFundAccount = new Account();
+    let treasuryFundAccountPubKey = treasuryFundAccount.publicKey;
+    let lamports = 100000;
+    let space = 0;
+    transaction.add(
+        SystemProgram.createAccount({
+            fromPubkey: wallet.publicKey,
+            newAccountPubkey: treasuryFundAccountPubKey,
+            lamports,
+            space,
+            programId,
+        })
+    );
+
+    // Send bid funds
+    transaction.add(SystemProgram.transfer({
+        fromPubkey: wallet.publicKey,
+        toPubkey: treasuryFundAccount.publicKey,
+        lamports: amount * LAMPORTS_PER_SOL,
+    }));
+
+    // Create new bid transaction
+    const instruction = new TransactionInstruction({
+        keys: [{pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+               {pubkey: auctionListPubkey, isSigner: false, isWritable: true},
+               {pubkey: treasuryFundAccountPubKey, isSigner: true, isWritable: true},
+               {pubkey: treasuryPubkey, isSigner: false, isWritable: true}],
+        programId,
+        data: Buffer.from([0, ...longToByteArray(amount * LAMPORTS_PER_SOL)]),
+    });
+    transaction.add(instruction);
+
+    console.log('Sending Bid transaction');
+    await sendTransaction(connection, wallet, treasuryFundAccount, transaction, true);
+    console.log('Bid transaction sent');
+};
+
+const getAccountInfo = async (connection: Connection, pubKey: PublicKey) => {
+  const info = await connection.getAccountInfo(pubKey, "recent");
+  if (info === null) {
+    throw new Error("Failed to get account info");
+  }
+  return info;
+};
 
 type BidEntry = { amount: number; bidder: string };
 export const getAuctionList = async (
   connection: Connection,
-  auctionListAccount: Account,
+  auctionListPubkey: PublicKey,
 ) => {
     var bidder = '';
     var amount = 0;
     try {
-        let info = await getAccountInfo(connection, auctionListAccount.publicKey);
+        let info = await getAccountInfo(connection, auctionListPubkey);
 
         console.log("info is");
         console.log(info);
@@ -109,7 +116,6 @@ export const getAuctionList = async (
         bidder = key.toBase58();
         console.log(bidder);
 
-
     } catch (err) {
         console.log(err);
     }
@@ -123,6 +129,7 @@ export const getAuctionList = async (
 export const sendTransaction = async (
   connection: Connection,
   wallet: any,
+  signer: any,
   transaction: Transaction,
   awaitConfirmation = true,
 ) => {
@@ -130,10 +137,21 @@ export const sendTransaction = async (
     await connection.getRecentBlockhash("max")
   ).blockhash;
 
-  transaction.setSigners(
-    wallet.publicKey,
-  );
-  let signedTransaction = await wallet.signTransaction(transaction);
+  let signedTransaction;
+
+  if (signer) {
+      transaction.setSigners(
+        wallet.publicKey,
+        signer.publicKey
+      );
+      transaction.partialSign(signer);
+  } else {
+      transaction.setSigners(
+        wallet.publicKey,
+      );
+  }
+
+  signedTransaction = await wallet.signTransaction(transaction);
   signedTransaction.feePayer = wallet.publicKey;
 
   const rawTransaction = signedTransaction.serialize();

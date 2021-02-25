@@ -79,6 +79,13 @@ impl Processor {
         // Set accounts
         let bidder_account = next_account_info(accounts_iter)?;
         let auction_list_account = next_account_info(accounts_iter)?;
+        let treasury_fund_account = next_account_info(accounts_iter)?;
+        let treasury_account = next_account_info(accounts_iter)?;
+
+        msg!("Transfering to treasury");
+
+        **treasury_account.lamports.borrow_mut() += amount;
+        **treasury_fund_account.lamports.borrow_mut() -= amount;
 
         // Save a BidEntry into the auction list account
         let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow())?;
