@@ -13,9 +13,9 @@ export async function newAccountWithLamports(
   console.log('trying to airdrop ' + lamports);
 
   let lamport_amount_single_ad = 9900000000;
-  let max_tries = 1;
+  let max_tries = 2;
   if (lamports > lamport_amount_single_ad) {
-      max_tries = Math.ceil(lamports / lamport_amount_single_ad);
+      max_tries = Math.ceil(lamports / lamport_amount_single_ad) + 1;
   }
 
   console.log('max tries ' + max_tries);

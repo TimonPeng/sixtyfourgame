@@ -42,6 +42,8 @@ export const sendBidSequence = async (
   payerAccount: Account,
   auctionListPubkey: PublicKey,
   treasuryPubkey: PublicKey,
+  auctionEndSlotPubkey: PublicKey,
+  sysvarClockPubKey: PublicKey,
 ) => {
 
     // Create new game fund account
@@ -72,7 +74,9 @@ export const sendBidSequence = async (
         keys: [{pubkey: wallet.publicKey, isSigner: true, isWritable: true},
                {pubkey: auctionListPubkey, isSigner: false, isWritable: true},
                {pubkey: treasuryFundAccountPubKey, isSigner: true, isWritable: true},
-               {pubkey: treasuryPubkey, isSigner: false, isWritable: true}],
+               {pubkey: treasuryPubkey, isSigner: false, isWritable: true},
+               {pubkey: auctionEndSlotPubkey, isSigner: false, isWritable: false},
+               {pubkey: sysvarClockPubKey, isSigner: false, isWritable: false}],
         programId,
         data: Buffer.from([1, ...longToByteArray(amount * LAMPORTS_PER_SOL)]),
     });

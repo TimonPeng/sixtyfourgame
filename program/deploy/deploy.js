@@ -160,6 +160,9 @@ export async function establishOwner(): Promise<void> {
     'Sol to pay for fees',
   );
 
+  // Wait for account to have lamports
+  await sleep(3000);
+      
   await saveStore(
     store,
     urlTls,

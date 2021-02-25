@@ -17,11 +17,14 @@ import {
 } from '@solana/web3.js';
 
 
-let programId = new PublicKey("FFqrthdm5avrqCgzZA2jujC6s6BA5EP4o2AFV66zUtPf");
-let payerAccount = new Account(Buffer.from("cdXW9rWyRG0FMUZxy1tarWYxgTzCVTfbTRQ/i8u7HILv9kCDat3uWxF4GiJ90MRmmW3j1PcPW799JJuK/fqcrQ==", "base64"));
-let auctionListPubkey = new PublicKey("6wAVQBw1hA27sjTsipHrB3kVsJLX3de34V9gKjkmJegM");
-let treasuryPubkey = new PublicKey("Fk2oACX9pHVrobLRAsraU96DhpPRL7dzhBTdwWu5fZJq");
-let auctionEndSlotPubkey = new PublicKey("fjVbpsRbgdUjPorLBLvhmXRzfnce5JcHmGJ4s3E5ein");
+let programId = new PublicKey("GpzaE4voNCwhSmU7gnBTAhVjRxEfmHW3e8ZeQm61SBTP");
+let payerAccount = new Account(Buffer.from("KCMJqpreN0IustP5/uyS3+cLS8+qolB6ae9bcvBopaVFM4XhXMf+DMtLpj+Vl96iuq8Dw1G/WcdydSmM/ob0rw==", "base64"));
+let auctionListPubkey = new PublicKey("D69UH8gsaBiWGXTcs9e6koedrv32cJzDCmRs3KtRpSaB");
+let treasuryPubkey = new PublicKey("ZKvSyvvszVjjEUP8yWWwLeaPG3Z7F87GjrNsxcFYSx9");
+let auctionEndSlotPubkey = new PublicKey("96L8HZPX2n6Z5ENcxTyZuraWLSkxJgZrGbja1yKavycB");
+
+
+let sysvarClockPubKey = new PublicKey('SysvarC1ock11111111111111111111111111111111');
 
 export const AuctionView = () => {
 
@@ -77,11 +80,14 @@ export const AuctionView = () => {
                   programId,
                   payerAccount,
                   auctionListPubkey,
-                  treasuryPubkey
+                  treasuryPubkey,
+                  auctionEndSlotPubkey,
+                  sysvarClockPubKey
               );
+              setRefresh(1);
           })();
       }
-  }, [connected, bidAmount, wallet, connection, programId, payerAccount, auctionListPubkey, treasuryPubkey]);
+  }, [connected, bidAmount, wallet, connection, programId, payerAccount, auctionListPubkey, treasuryPubkey, auctionEndSlotPubkey, sysvarClockPubKey]);
 
   const handleUpdateAuctionList = React.useCallback(() => {
       console.log('getting auction list');
@@ -109,7 +115,7 @@ export const AuctionView = () => {
   }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder, setAuctionEndSlot, setAuctionEndTime, auctionEndSlotPubkey]);
 
   if(refresh) {
-    setRefresh(1);
+    setRefresh(0);
     handleUpdateAuctionList();
   }
 

@@ -89,10 +89,10 @@ impl Processor {
         let mut auction_end_slot_info = AuctionEndSlot::unpack_unchecked(&auction_end_slot_account.data.borrow())?;
 
         // TODO; admin only
-        // if auction_end_slot_info.auction_enabled {
-        //     msg!("Auction already started");
-        //     return Err(ProgramError::InvalidAccountData);
-        // }
+        if auction_end_slot_info.auction_enabled {
+            msg!("Auction already started");
+            return Err(ProgramError::InvalidAccountData);
+        }
 
         auction_end_slot_info.auction_end_slot = auction_end_slot;
         auction_end_slot_info.auction_enabled = true;
@@ -122,6 +122,16 @@ impl Processor {
         let auction_list_account = next_account_info(accounts_iter)?;
         let treasury_fund_account = next_account_info(accounts_iter)?;
         let treasury_account = next_account_info(accounts_iter)?;
+        let auction_end_slot_account = next_account_info(accounts_iter)?;
+        let sysvar_account = next_account_info(accounts_iter)?;
+
+        // Dont allow bidding if after auction_end_slot
+        let current_slot = Clock::from_account_info(sysvar_account)?.slot;
+        let mut auction_end_slot_info = AuctionEndSlot::unpack_unchecked(&auction_end_slot_account.data.borrow())?;
+        if !auction_end_slot_info.auction_enabled || auction_end_slot_info.auction_end_slot < current_slot {
+            msg!("Auction is not active");
+            return Err(ProgramError::InvalidAccountData);
+        }
 
         msg!("Transfering to treasury");
 
