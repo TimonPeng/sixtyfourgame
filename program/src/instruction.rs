@@ -18,9 +18,8 @@ pub enum SixtyFourGameInstruction {
     /// CancelBid - removes BidEntry from AuctionList
     CancelBid {
     },
-    /// MintNFT - bidEntryNumber - creates NFT after auction
+    /// MintNFT - creates NFT after auction
     MintNFT {
-        bidEntryNumber: u64
     },
     /// InitiatePlay - square - allows player to attack
     InitiatePlay {
@@ -50,9 +49,7 @@ impl SixtyFourGameInstruction {
                 amount: Self::unpack_amount(rest)?,
             },
             2 => Self::CancelBid {},
-            3 => Self::MintNFT {
-                bidEntryNumber: Self::unpack_amount(rest)?,
-            },
+            3 => Self::MintNFT {},
             4 => Self::InitiatePlay {
                 square: Self::unpack_amount(rest)?,
             },

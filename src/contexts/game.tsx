@@ -87,6 +87,36 @@ export const sendBidSequence = async (
     console.log('Bid transaction sent');
 };
 
+
+export const sendClaimSequence = async (
+  wallet: any,
+  connection: any,
+  programId: PublicKey,
+  auctionListPubkey: PublicKey,
+  auctionEndSlotPubkey: PublicKey,
+  sysvarClockPubKey: PublicKey,
+) => {
+
+    // Create new game fund account
+    let transaction = new Transaction();
+
+    // Create new bid transaction
+    const instruction = new TransactionInstruction({
+        keys: [{pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+               {pubkey: wallet.publicKey, isSigner: false, isWritable: true},
+               {pubkey: auctionListPubkey, isSigner: false, isWritable: true},
+               {pubkey: auctionEndSlotPubkey, isSigner: false, isWritable: false},
+               {pubkey: sysvarClockPubKey, isSigner: false, isWritable: false}],
+        programId,
+        data: Buffer.from([3]),
+    });
+    transaction.add(instruction);
+
+    console.log('Sending Claim transaction');
+    await sendTransaction(connection, wallet, null, transaction, true);
+    console.log('Claim transaction sent');
+};
+
 const getAccountInfo = async (connection: Connection, pubKey: PublicKey) => {
   const info = await connection.getAccountInfo(pubKey, "recent");
   if (info === null) {

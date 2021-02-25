@@ -8,7 +8,7 @@ import { useConnection, useConnectionConfig } from "../../contexts/connection";
 import { useWallet } from "../../contexts/wallet";
 import { useMarkets } from "../../contexts/market";
 import { formatNumber } from "../../utils/utils";
-import { getAuctionList, getAuctionEndSlot, getCurrentSlot, sendBidSequence } from "../../contexts/game"
+import { getAuctionList, getAuctionEndSlot, getCurrentSlot, sendClaimSequence, sendBidSequence } from "../../contexts/game"
 import { Store } from "../../store"
 
 import {
@@ -17,11 +17,11 @@ import {
 } from '@solana/web3.js';
 
 
-let programId = new PublicKey("GpzaE4voNCwhSmU7gnBTAhVjRxEfmHW3e8ZeQm61SBTP");
-let payerAccount = new Account(Buffer.from("KCMJqpreN0IustP5/uyS3+cLS8+qolB6ae9bcvBopaVFM4XhXMf+DMtLpj+Vl96iuq8Dw1G/WcdydSmM/ob0rw==", "base64"));
-let auctionListPubkey = new PublicKey("D69UH8gsaBiWGXTcs9e6koedrv32cJzDCmRs3KtRpSaB");
-let treasuryPubkey = new PublicKey("ZKvSyvvszVjjEUP8yWWwLeaPG3Z7F87GjrNsxcFYSx9");
-let auctionEndSlotPubkey = new PublicKey("96L8HZPX2n6Z5ENcxTyZuraWLSkxJgZrGbja1yKavycB");
+let programId = new PublicKey("2aciYVYUnFxDLZyxNUrGc7oC2viVTJcQRwASB8KE13zh");
+let payerAccount = new Account(Buffer.from("+sXU1qvb1kH3UnXMtZ13ZVR4HxufAEsWTupMvliqZCTg7iCnZ2z1DHuybo3CAV4844HGdU1vUT71vHQAryOEJg==", "base64"));
+let auctionListPubkey = new PublicKey("9ceCpe5yhVJ6LLVexvp3FrZAC7ZU278tkTZEz9mUSkHW");
+let treasuryPubkey = new PublicKey("87UcKxk8Q2pAsKqNHwkuT7XN8fCJ1vYCEMjQqYfEgRsS");
+let auctionEndSlotPubkey = new PublicKey("5FDLMbDgZhJ49wCA4zXgJC8Ey9F2PbDdx1ubpY3LLSSr");
 
 
 let sysvarClockPubKey = new PublicKey('SysvarC1ock11111111111111111111111111111111');
@@ -90,6 +90,25 @@ export const AuctionView = () => {
       }
   }, [connected, bidAmount, wallet, connection, programId, payerAccount, auctionListPubkey, treasuryPubkey, auctionEndSlotPubkey, sysvarClockPubKey]);
 
+
+  const handleSubmitClaim = React.useCallback((event) => {
+      event.preventDefault();
+      console.log('submitting claim');
+      if (connected) {
+          (async () => {
+              await sendClaimSequence(
+                  wallet,
+                  connection,
+                  programId,
+                  auctionListPubkey,
+                  auctionEndSlotPubkey,
+                  sysvarClockPubKey
+              );
+              setRefresh(1);
+          })();
+      }
+  }, [connected, bidAmount, wallet, connection, programId, auctionListPubkey, auctionEndSlotPubkey, sysvarClockPubKey]);
+
   const handleUpdateAuctionList = React.useCallback(() => {
       console.log('getting auction list');
       (async () => {
@@ -153,7 +172,7 @@ export const AuctionView = () => {
           </form>
         </Col>)
       }
-      { !connected && !auctionActive &&
+      { !connected &&
         (<Col span={24}>
           <ConnectButton
             type="text"
@@ -166,7 +185,7 @@ export const AuctionView = () => {
       { connected && !auctionActive &&
         (<Col span={24}>
           <h3>Claim your Game Square!</h3>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmitClaim}>
             <input className="text-black" type="submit" value="Claim" />
           </form>
         </Col>)

@@ -49,9 +49,9 @@ impl Processor {
                 msg!("SixtyFourGameInstruction: CancelBid");
                 Self::process_cancel_bid(accounts, program_id)
             }
-            SixtyFourGameInstruction::MintNFT { bidEntryNumber } => {
+            SixtyFourGameInstruction::MintNFT {  } => {
                 msg!("SixtyFourGameInstruction: MintNFT");
-                Self::process_mint_nft(accounts, bidEntryNumber, program_id)
+                Self::process_mint_nft(accounts, program_id)
             }
             SixtyFourGameInstruction::InitiatePlay { square } => {
                 msg!("SixtyFourGameInstruction: InitiatePlay");
@@ -161,17 +161,33 @@ impl Processor {
 
         msg!("Cancel Bid successful");
 
+        // TODO
+
         Ok(())
     }
 
     pub fn process_mint_nft(
         accounts: &[AccountInfo],
-        bidEntryNumber: u64,
         program_id: &Pubkey,
     ) -> ProgramResult {
 
-        msg!("Mint NFT successful");
+        let accounts_iter = &mut accounts.iter();
+        // Set accounts
+        let payer_account = next_account_info(accounts_iter)?;
+        let bid_entry_account = next_account_info(accounts_iter)?;
+        let auction_list_account = next_account_info(accounts_iter)?;
+        let auction_end_slot_account = next_account_info(accounts_iter)?;
+        let sysvar_account = next_account_info(accounts_iter)?;
 
+        // Dont allow minting if before auction_end_slot
+        let current_slot = Clock::from_account_info(sysvar_account)?.slot;
+        let mut auction_end_slot_info = AuctionEndSlot::unpack_unchecked(&auction_end_slot_account.data.borrow())?;
+        if !auction_end_slot_info.auction_enabled || auction_end_slot_info.auction_end_slot >= current_slot {
+            msg!("Auction is active, cannot mint");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        msg!("Mint NFT successful");
         Ok(())
     }
 
