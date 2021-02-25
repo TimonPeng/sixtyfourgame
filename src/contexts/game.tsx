@@ -74,7 +74,7 @@ export const sendBidSequence = async (
                {pubkey: treasuryFundAccountPubKey, isSigner: true, isWritable: true},
                {pubkey: treasuryPubkey, isSigner: false, isWritable: true}],
         programId,
-        data: Buffer.from([0, ...longToByteArray(amount * LAMPORTS_PER_SOL)]),
+        data: Buffer.from([1, ...longToByteArray(amount * LAMPORTS_PER_SOL)]),
     });
     transaction.add(instruction);
 

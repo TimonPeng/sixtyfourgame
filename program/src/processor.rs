@@ -82,16 +82,17 @@ impl Processor {
         let accounts_iter = &mut accounts.iter();
 
         // Set accounts
+        let admin_account = next_account_info(accounts_iter)?;
         let auction_end_slot_account = next_account_info(accounts_iter)?;
 
         // Save a BidEntry into the auction list account
         let mut auction_end_slot_info = AuctionEndSlot::unpack_unchecked(&auction_end_slot_account.data.borrow())?;
 
         // TODO; admin only
-        if auction_end_slot_info.auction_enabled {
-            msg!("Auction already started");
-            return Err(ProgramError::InvalidAccountData);
-        }
+        // if auction_end_slot_info.auction_enabled {
+        //     msg!("Auction already started");
+        //     return Err(ProgramError::InvalidAccountData);
+        // }
 
         auction_end_slot_info.auction_end_slot = auction_end_slot;
         auction_end_slot_info.auction_enabled = true;

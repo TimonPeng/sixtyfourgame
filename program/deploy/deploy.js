@@ -87,6 +87,7 @@ async function loadStore() {
     const store = new Store();
     let payerAccount;
     let programId;
+    let auctionEndSlotPubkey;
     let auctionListPubkey;
     let treasuryPubkey;
     try {
@@ -96,6 +97,9 @@ async function loadStore() {
       }
       if (config.auctionListPubkey !== "") {
           auctionListPubkey = new PublicKey(config.auctionListPubkey);
+      }
+      if (config.auctionEndSlotPubkey !== "") {
+          auctionEndSlotPubkey = new PublicKey(config.auctionEndSlotPubkey);
       }
       if (config.treasuryPubkey !== "") {
           treasuryPubkey = new PublicKey(config.treasuryPubkey);
@@ -107,7 +111,7 @@ async function loadStore() {
     } catch (err) {
       console.log(err);
     }
-    return [store, programId, payerAccount, auctionListPubkey, treasuryPubkey];
+    return [store, programId, payerAccount, auctionListPubkey, treasuryPubkey, auctionEndSlotPubkey];
 }
 
 async function saveStore(store, urlTls, programId, payerSecretKey, auctionListPubkey, treasuryPubkey, auctionEndSlotPubkey) {
@@ -129,7 +133,7 @@ async function saveStore(store, urlTls, programId, payerSecretKey, auctionListPu
  * Establish an account that owns every account deployed
  */
 export async function establishOwner(): Promise<void> {
-  let [store, programId, payerAccount, auctionListPubkey, treasuryPubkey] = await loadStore();
+  let [store, programId, payerAccount, auctionListPubkey, treasuryPubkey, auctionEndSlotPubkey] = await loadStore();
 
   if (!payerAccount) {
     let fees = 0;
@@ -156,9 +160,6 @@ export async function establishOwner(): Promise<void> {
     'Sol to pay for fees',
   );
 
-  // Sleep to wait for airdrops
-  sleep(1000);
-
   await saveStore(
     store,
     urlTls,
@@ -166,6 +167,7 @@ export async function establishOwner(): Promise<void> {
     payerSecretKey,
     treasuryPubkey,
     auctionListPubkey,
+    auctionEndSlotPubkey
   );
 }
 
@@ -288,8 +290,8 @@ export async function loadProgram(): Promise<void> {
       let auctionEndSlotAccountSecretKey = Buffer.from(auctionEndSlotAccount.secretKey).toString("base64");
       console.log('auctionEndSlotAccountSecretKey   ', auctionEndSlotAccountSecretKey);
 
-      // Account needs 8 bytes for u64 slot end
-      let space = 8;
+      // Account needs 9 bytes for u64 slot end
+      let space = 9;
       console.log('auctionEndSlot using ', space.toString(), ' allocated bytes');
 
       // Get rent exempt amount of lamports
@@ -316,6 +318,33 @@ export async function loadProgram(): Promise<void> {
   }
   console.log("auctionEndSlot address: " + auctionEndSlotPubkey.toBase58());
 
+  // Set Auction end slot
+  let epochInfo = await connection.getEpochInfo();
+  let lastSlot = epochInfo.absoluteSlot;
+  let auctionEndMinutes = 5;
+  let blocktime = 0.4;
+  let auctionEndSlot = lastSlot + Math.ceil(auctionEndMinutes * 60 / blocktime);
+
+  console.log("Current block " + lastSlot);
+  console.log("Auction end slot: " + auctionEndSlot);
+
+  const instruction = new TransactionInstruction({
+      keys: [{pubkey: payerAccount.publicKey, isSigner: true, isWritable: true},
+          {pubkey: auctionEndSlotPubkey, isSigner: false, isWritable: true}],
+      programId,
+      data: Buffer.from([0, ...longToByteArray(auctionEndSlot)])
+  });
+
+  console.log('Setting auction end slot');
+  let instructions = new Transaction();
+  instructions.add(instruction);
+  await sendAndConfirmTransaction(
+    '',
+    connection,
+    instructions,
+    payerAccount
+  );
+
   await saveStore(
     store,
     urlTls,
@@ -323,6 +352,7 @@ export async function loadProgram(): Promise<void> {
     payerSecretKey,
     treasuryPubkey,
     auctionListPubkey,
+    auctionEndSlotPubkey
   );
 }
 
