@@ -17,13 +17,14 @@ import {
 } from '@solana/web3.js';
 
 
-let programId = new PublicKey("2aciYVYUnFxDLZyxNUrGc7oC2viVTJcQRwASB8KE13zh");
-let payerAccount = new Account(Buffer.from("+sXU1qvb1kH3UnXMtZ13ZVR4HxufAEsWTupMvliqZCTg7iCnZ2z1DHuybo3CAV4844HGdU1vUT71vHQAryOEJg==", "base64"));
-let auctionListPubkey = new PublicKey("9ceCpe5yhVJ6LLVexvp3FrZAC7ZU278tkTZEz9mUSkHW");
-let treasuryPubkey = new PublicKey("87UcKxk8Q2pAsKqNHwkuT7XN8fCJ1vYCEMjQqYfEgRsS");
-let auctionEndSlotPubkey = new PublicKey("5FDLMbDgZhJ49wCA4zXgJC8Ey9F2PbDdx1ubpY3LLSSr");
+let programId = new PublicKey("7kTkLH3WfB733uW2Yb5tj8FfiQ8ZJrNhKunabWt4sxrU");
+let payerAccount = new Account(Buffer.from("tCMVjvScIBgjfMpJncq3iTZo8wrlyRnOLbGkAktScUeGnsp+bvq7byUZQ+bLa5WDZU1fl2mDvov43tWp8W8pnA==", "base64"));
+let auctionListPubkey = new PublicKey("FVGS6HZq1wYLDsbr4cwXbhrhipF99mLbMummP6TsbPbW");
+let treasuryPubkey = new PublicKey("7j5dir857UATEdvgEf9Bku8qyGxBHR5Vdqfy16Bx2vUU");
+let auctionEndSlotPubkey = new PublicKey("BchsxxThGAdGE9VaRNNTzXM82giapY3t6SzHSvPzE5Bb");
 
 
+let splTokenProgramPubKey = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 let sysvarClockPubKey = new PublicKey('SysvarC1ock11111111111111111111111111111111');
 
 export const AuctionView = () => {
@@ -102,12 +103,13 @@ export const AuctionView = () => {
                   programId,
                   auctionListPubkey,
                   auctionEndSlotPubkey,
-                  sysvarClockPubKey
+                  sysvarClockPubKey,
+                  splTokenProgramPubKey
               );
               setRefresh(1);
           })();
       }
-  }, [connected, bidAmount, wallet, connection, programId, auctionListPubkey, auctionEndSlotPubkey, sysvarClockPubKey]);
+  }, [connected, bidAmount, wallet, connection, programId, auctionListPubkey, auctionEndSlotPubkey, sysvarClockPubKey, splTokenProgramPubKey]);
 
   const handleUpdateAuctionList = React.useCallback(() => {
       console.log('getting auction list');

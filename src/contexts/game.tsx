@@ -10,9 +10,14 @@ import {
   Transaction,
   SystemProgram,
   TransactionInstruction,
+  SYSVAR_RENT_PUBKEY
 } from "@solana/web3.js";
 import {AccountLayout, u64, MintInfo, MintLayout, Token} from "@solana/spl-token";
 import React, { useContext, useEffect, useMemo } from "react";
+
+let TOKEN_PROGRAM_ID = new PublicKey(
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+);
 
 // TODO: move to util
 const longToByteArray = function(long: any) {
@@ -83,7 +88,7 @@ export const sendBidSequence = async (
     transaction.add(instruction);
 
     console.log('Sending Bid transaction');
-    await sendTransaction(connection, wallet, treasuryFundAccount, transaction, true);
+    await sendTransaction(connection, wallet, treasuryFundAccount, null, transaction, true);
     console.log('Bid transaction sent');
 };
 
@@ -95,25 +100,63 @@ export const sendClaimSequence = async (
   auctionListPubkey: PublicKey,
   auctionEndSlotPubkey: PublicKey,
   sysvarClockPubKey: PublicKey,
+  splTokenProgramPubKey: PublicKey
 ) => {
 
     // Create new game fund account
     let transaction = new Transaction();
 
-    // Create new bid transaction
+    let space = MintLayout.span;
+    let lamports = await connection.getMinimumBalanceForRentExemption(
+      MintLayout.span
+    );
+    const mintAccount = new Account();
+    transaction.add(
+        SystemProgram.createAccount({
+            fromPubkey: wallet.publicKey,
+            newAccountPubkey: mintAccount.publicKey,
+            lamports,
+            space,
+            programId: TOKEN_PROGRAM_ID,
+        })
+    );
+
+    space = 165;
+    lamports = await connection.getMinimumBalanceForRentExemption(space);
+    const tokenAccount = new Account();
+    transaction.add(
+        SystemProgram.createAccount({
+            fromPubkey: wallet.publicKey,
+            newAccountPubkey: tokenAccount.publicKey,
+            lamports,
+            space,
+            programId: TOKEN_PROGRAM_ID,
+        })
+    );
+
+    const [mint_pda, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from("mint")],
+      programId,
+    );
+
+    // Create new claim transaction
     const instruction = new TransactionInstruction({
         keys: [{pubkey: wallet.publicKey, isSigner: true, isWritable: true},
-               {pubkey: wallet.publicKey, isSigner: false, isWritable: true},
                {pubkey: auctionListPubkey, isSigner: false, isWritable: true},
                {pubkey: auctionEndSlotPubkey, isSigner: false, isWritable: false},
-               {pubkey: sysvarClockPubKey, isSigner: false, isWritable: false}],
-        programId,
+               {pubkey: sysvarClockPubKey, isSigner: false, isWritable: false},
+               {pubkey: mintAccount.publicKey, isSigner: true, isWritable: true},
+               {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: true},
+               {pubkey: mint_pda, isSigner: false, isWritable: false},
+               {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+               {pubkey: splTokenProgramPubKey, isSigner: false, isWritable: false}],
         data: Buffer.from([3]),
+        programId,
     });
     transaction.add(instruction);
 
     console.log('Sending Claim transaction');
-    await sendTransaction(connection, wallet, null, transaction, true);
+    await sendTransaction(connection, wallet, mintAccount, tokenAccount, transaction, true);
     console.log('Claim transaction sent');
 };
 
@@ -188,6 +231,7 @@ export const sendTransaction = async (
   connection: Connection,
   wallet: any,
   signer: any,
+  signer2: any,
   transaction: Transaction,
   awaitConfirmation = true,
 ) => {
@@ -197,13 +241,21 @@ export const sendTransaction = async (
 
   let signedTransaction;
 
-  if (signer) {
+  if (signer && signer2) {
       transaction.setSigners(
         wallet.publicKey,
-        signer.publicKey
+        signer.publicKey,
+        signer2.publicKey
       );
       transaction.partialSign(signer);
-  } else {
+      transaction.partialSign(signer2);
+  } else if (signer) {
+        transaction.setSigners(
+          wallet.publicKey,
+          signer.publicKey,
+        );
+        transaction.partialSign(signer);
+    } else {
       transaction.setSigners(
         wallet.publicKey,
       );

@@ -7,15 +7,18 @@ use solana_sdk::{
     msg,
     program_error::ProgramError,
     pubkey::Pubkey,
+    system_instruction,
     sysvar::{
-        clock::Clock, slot_hashes::SlotHashes, Sysvar,
+        rent::Rent, clock::Clock, slot_hashes::SlotHashes, Sysvar,
     },
+    program_option::COption,
 };
 
 use solana_sdk::program::invoke_signed;
 // use spl_token::{instruction};
 use solana_sdk::program_pack::Pack as TokenPack;
-// use spl_token::state::{Account as TokenAccount, Mint};
+use spl_token::state::{Account as TokenAccount, Mint};
+use spl_token::{self, instruction::{initialize_mint, initialize_account, mint_to}};
 
 use num_derive::FromPrimitive;
 use solana_sdk::{decode_error::DecodeError};
@@ -111,11 +114,6 @@ impl Processor {
         program_id: &Pubkey,
     ) -> ProgramResult {
 
-        let samount = amount.to_string();
-        let amount_str: &str = &samount;
-        msg!("Bid Amount: ");
-        msg!(amount_str);
-
         let accounts_iter = &mut accounts.iter();
         // Set accounts
         let bidder_account = next_account_info(accounts_iter)?;
@@ -133,20 +131,14 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData);
         }
 
-        msg!("Transfering to treasury");
-
         **treasury_account.lamports.borrow_mut() += amount;
         **treasury_fund_account.lamports.borrow_mut() -= amount;
 
         // Save a BidEntry into the auction list account
         let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow())?;
 
-        msg!("Got auction list");
-
         auction_list_info.amount_lamports = amount;
         auction_list_info.bidder_pubkey = *bidder_account.key;
-
-        msg!("Saving auction list");
 
         BidEntry::pack(auction_list_info, &mut auction_list_account.data.borrow_mut())?;
 
@@ -174,10 +166,15 @@ impl Processor {
         let accounts_iter = &mut accounts.iter();
         // Set accounts
         let payer_account = next_account_info(accounts_iter)?;
-        let bid_entry_account = next_account_info(accounts_iter)?;
         let auction_list_account = next_account_info(accounts_iter)?;
         let auction_end_slot_account = next_account_info(accounts_iter)?;
         let sysvar_account = next_account_info(accounts_iter)?;
+        let mint_account = next_account_info(accounts_iter)?;
+        let token_account = next_account_info(accounts_iter)?;
+        let mint_pda_account = next_account_info(accounts_iter)?;
+        let rent_account = next_account_info(accounts_iter)?;
+        // let rent = &Rent::from_account_info(next_account_info(accounts_iter)?)?;
+        let spl_token_program = next_account_info(accounts_iter)?;
 
         // Dont allow minting if before auction_end_slot
         let current_slot = Clock::from_account_info(sysvar_account)?.slot;
@@ -186,6 +183,81 @@ impl Processor {
             msg!("Auction is active, cannot mint");
             return Err(ProgramError::InvalidAccountData);
         }
+
+        let mint_instr = spl_token::instruction::initialize_mint(
+            &spl_token::ID,
+            mint_account.key,
+            mint_pda_account.key,
+            Option::Some(mint_pda_account.key),
+            0
+        )?;
+
+        let account_infos = &[
+            mint_account.clone(),
+            spl_token_program.clone(),
+            rent_account.clone(),
+            mint_pda_account.clone()
+        ];
+
+        invoke_signed(
+            &mint_instr,
+            account_infos,
+            &[],
+        )?;
+        msg!("InitMint successful");
+
+        let init_account_instr = spl_token::instruction::initialize_account(
+            &spl_token::ID,
+            token_account.key,
+            mint_account.key,
+            payer_account.key,
+        )?;
+
+        let init_account_account_infos = &[
+            token_account.clone(),
+            mint_account.clone(),
+            payer_account.clone(),
+            rent_account.clone()
+        ];
+
+        msg!("Initializing token account");
+
+        invoke_signed(
+            &init_account_instr,
+            init_account_account_infos,
+            &[],
+        )?;
+
+        let (mint_address, mint_bump_seed) = Pubkey::find_program_address(&[b"mint"], &program_id);
+
+        let mint_to_instr = spl_token::instruction::mint_to(
+            &spl_token::ID,
+            mint_account.key,
+            token_account.key,
+            mint_pda_account.key,
+            &[],
+            1,
+        )?;
+
+        let account_infos = &[
+            mint_account.clone(),
+            token_account.clone(),
+            spl_token_program.clone(),
+            mint_pda_account.clone()
+        ];
+
+        let mint_signer_seeds: &[&[_]] = &[
+            b"mint",
+            &[mint_bump_seed],
+        ];
+
+        msg!("Minting");
+
+        invoke_signed(
+            &mint_to_instr,
+            account_infos,
+            &[&mint_signer_seeds],
+        )?;
 
         msg!("Mint NFT successful");
         Ok(())

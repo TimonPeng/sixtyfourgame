@@ -162,7 +162,7 @@ export async function establishOwner(): Promise<void> {
 
   // Wait for account to have lamports
   await sleep(3000);
-      
+
   await saveStore(
     store,
     urlTls,
@@ -324,7 +324,7 @@ export async function loadProgram(): Promise<void> {
   // Set Auction end slot
   let epochInfo = await connection.getEpochInfo();
   let lastSlot = epochInfo.absoluteSlot;
-  let auctionEndMinutes = 5;
+  let auctionEndMinutes = 0.5;
   let blocktime = 0.4;
   let auctionEndSlot = lastSlot + Math.ceil(auctionEndMinutes * 60 / blocktime);
 
