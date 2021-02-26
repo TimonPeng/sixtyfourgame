@@ -21,21 +21,65 @@ pub struct AuctionEndSlot {
     pub auction_enabled: bool
 }
 
+pub struct GameSquare {
+    pub game_square_number: u64,
+    pub team_number: u64,
+    pub health_number: u64,
+    pub mint_pubkey: Pubkey,
+}
+
 impl Sealed for BidEntry {}
 impl Sealed for AuctionEndSlot {}
+impl Sealed for GameSquare {}
 
 //
 // pub struct AuctionList {
 //     pub bid_entries: [BidEntry],
 // }
 
-pub struct GameSquare {
-    pub game_square_number: u8,
-    pub team_number: u8,
-    pub health_number: u8,
-    pub assigned_pubkey: Pubkey,
-}
 
+impl Pack for GameSquare {
+    const LEN: usize = 56;
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+
+        let src = array_ref![src, 0, GameSquare::LEN];
+        let (
+            game_square_number,
+            team_number,
+            health_number,
+            mint_pubkey,
+        ) = array_refs![src, 8, 8, 8, 32];
+
+        Ok(GameSquare {
+            game_square_number: u64::from_le_bytes(*game_square_number),
+            team_number: u64::from_le_bytes(*team_number),
+            health_number: u64::from_le_bytes(*health_number),
+            mint_pubkey: Pubkey::new_from_array(*mint_pubkey),
+        })
+    }
+
+    fn pack_into_slice(&self, dst: &mut [u8]) {
+        let dst = array_mut_ref![dst, 0, GameSquare::LEN];
+        let (
+            game_square_number_dst,
+            team_number_dst,
+            health_number_dst,
+            mint_pubkey_dst,
+        ) = mut_array_refs![dst, 8, 8, 8, 32];
+
+        let GameSquare {
+            game_square_number,
+            team_number,
+            health_number,
+            mint_pubkey,
+        } = self;
+
+        *game_square_number_dst = game_square_number.to_le_bytes();
+        *team_number_dst = team_number.to_le_bytes();
+        *health_number_dst = health_number.to_le_bytes();
+        mint_pubkey_dst.copy_from_slice(mint_pubkey.as_ref());
+    }
+}
 
 impl Pack for AuctionEndSlot {
     const LEN: usize = 9;

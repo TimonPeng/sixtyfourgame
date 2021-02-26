@@ -100,7 +100,8 @@ export const sendClaimSequence = async (
   auctionListPubkey: PublicKey,
   auctionEndSlotPubkey: PublicKey,
   sysvarClockPubKey: PublicKey,
-  splTokenProgramPubKey: PublicKey
+  splTokenProgramPubKey: PublicKey,
+  allGameSquaresListPubkey: PublicKey
 ) => {
 
     // Create new game fund account
@@ -149,7 +150,8 @@ export const sendClaimSequence = async (
                {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: true},
                {pubkey: mint_pda, isSigner: false, isWritable: false},
                {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
-               {pubkey: splTokenProgramPubKey, isSigner: false, isWritable: false}],
+               {pubkey: splTokenProgramPubKey, isSigner: false, isWritable: false},
+               {pubkey: allGameSquaresListPubkey, isSigner: false, isWritable: true}],
         data: Buffer.from([3]),
         programId,
     });
@@ -166,6 +168,44 @@ const getAccountInfo = async (connection: Connection, pubKey: PublicKey) => {
     throw new Error("Failed to get account info");
   }
   return info;
+};
+
+export const getGameSquares = async (
+  connection: Connection,
+  allGameSquaresListPubkey: PublicKey,
+) => {
+    var game_square_number_int = 0;
+    var team_number_int = 0;
+    var health_number_int = 0;
+    var mint_pubkey = '';
+    try {
+        let info = await getAccountInfo(connection, allGameSquaresListPubkey);
+
+        // TODO: all 64 squares
+
+        const game_square_number = info.data.slice(0, 7);
+        game_square_number_int = byteArrayToLong(game_square_number);
+
+        const team_number = info.data.slice(8, 15);
+        team_number_int = byteArrayToLong(team_number);
+
+        const health_number = info.data.slice(16, 23);
+        health_number_int = byteArrayToLong(health_number);
+
+        const mint_pubkey_bytes = info.data.slice(24, 56);
+        var key = new PublicKey(Buffer.from(mint_pubkey_bytes));
+        mint_pubkey = key.toBase58();
+
+    } catch (err) {
+        console.log(err);
+    }
+
+    return {
+        game_square_number: game_square_number_int,
+        team_number: team_number_int,
+        health_number: health_number_int,
+        mint_pubkey: mint_pubkey,
+    };
 };
 
 type BidEntry = { amount: number; bidder: string };

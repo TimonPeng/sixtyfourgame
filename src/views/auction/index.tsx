@@ -8,8 +8,8 @@ import { useConnection, useConnectionConfig } from "../../contexts/connection";
 import { useWallet } from "../../contexts/wallet";
 import { useMarkets } from "../../contexts/market";
 import { formatNumber } from "../../utils/utils";
-import { getAuctionList, getAuctionEndSlot, getCurrentSlot, sendClaimSequence, sendBidSequence } from "../../contexts/game"
-import { Store } from "../../store"
+import { getAuctionList, getAuctionEndSlot, getCurrentSlot, sendClaimSequence, sendBidSequence, getGameSquares } from "../../contexts/game"
+import configData from "../../config.json";
 
 import {
   Account,
@@ -17,12 +17,19 @@ import {
 } from '@solana/web3.js';
 
 
-let programId = new PublicKey("7kTkLH3WfB733uW2Yb5tj8FfiQ8ZJrNhKunabWt4sxrU");
-let payerAccount = new Account(Buffer.from("tCMVjvScIBgjfMpJncq3iTZo8wrlyRnOLbGkAktScUeGnsp+bvq7byUZQ+bLa5WDZU1fl2mDvov43tWp8W8pnA==", "base64"));
-let auctionListPubkey = new PublicKey("FVGS6HZq1wYLDsbr4cwXbhrhipF99mLbMummP6TsbPbW");
-let treasuryPubkey = new PublicKey("7j5dir857UATEdvgEf9Bku8qyGxBHR5Vdqfy16Bx2vUU");
-let auctionEndSlotPubkey = new PublicKey("BchsxxThGAdGE9VaRNNTzXM82giapY3t6SzHSvPzE5Bb");
+let programId = new PublicKey(configData.programId);
+let payerAccount = new Account(Buffer.from(configData.payerSecretKey, "base64"));
+let auctionListPubkey = new PublicKey(configData.auctionListPubkey);
+let allGameSquaresListPubkey = new PublicKey(configData.allGameSquaresListPubkey);
+let treasuryPubkey = new PublicKey(configData.treasuryPubkey);
+let auctionEndSlotPubkey = new PublicKey(configData.auctionEndSlotPubkey);
 
+console.log('programId ', programId);
+console.log('configData.payerSecretKey ', configData.payerSecretKey);
+console.log('auctionListPubkey ', auctionListPubkey.toBase58());
+console.log('allGameSquaresListPubkey ', allGameSquaresListPubkey.toBase58());
+console.log('treasuryPubkey ', treasuryPubkey.toBase58());
+console.log('auctionEndSlotPubkey ', auctionEndSlotPubkey.toBase58());
 
 let splTokenProgramPubKey = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 let sysvarClockPubKey = new PublicKey('SysvarC1ock11111111111111111111111111111111');
@@ -104,12 +111,13 @@ export const AuctionView = () => {
                   auctionListPubkey,
                   auctionEndSlotPubkey,
                   sysvarClockPubKey,
-                  splTokenProgramPubKey
+                  splTokenProgramPubKey,
+                  allGameSquaresListPubkey
               );
               setRefresh(1);
           })();
       }
-  }, [connected, bidAmount, wallet, connection, programId, auctionListPubkey, auctionEndSlotPubkey, sysvarClockPubKey, splTokenProgramPubKey]);
+  }, [connected, bidAmount, wallet, connection, programId, auctionListPubkey, auctionEndSlotPubkey, sysvarClockPubKey, splTokenProgramPubKey, allGameSquaresListPubkey]);
 
   const handleUpdateAuctionList = React.useCallback(() => {
       console.log('getting auction list');
@@ -137,8 +145,14 @@ export const AuctionView = () => {
               setAuctionEndSlot(auctionEndSlot);
               setAuctionEndTime(min);
           }
+
+          var gameSquareData: any = await getGameSquares(
+              connection,
+              allGameSquaresListPubkey
+          );
+          console.log(gameSquareData);
       })();
-  }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder, setAuctionEndSlot, setAuctionEndTime, auctionEndSlotPubkey, setAuctionActive]);
+  }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder, setAuctionEndSlot, setAuctionEndTime, auctionEndSlotPubkey, setAuctionActive, allGameSquaresListPubkey]);
 
   if(refresh) {
     setRefresh(0);

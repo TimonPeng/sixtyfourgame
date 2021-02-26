@@ -131,14 +131,22 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData);
         }
 
+        msg!("Auction active");
+
         **treasury_account.lamports.borrow_mut() += amount;
         **treasury_fund_account.lamports.borrow_mut() -= amount;
+
+        msg!("Lamports transfered");
 
         // Save a BidEntry into the auction list account
         let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow())?;
 
+        msg!("Setting data");
+
         auction_list_info.amount_lamports = amount;
         auction_list_info.bidder_pubkey = *bidder_account.key;
+
+        msg!("Saving data");
 
         BidEntry::pack(auction_list_info, &mut auction_list_account.data.borrow_mut())?;
 
@@ -175,6 +183,7 @@ impl Processor {
         let rent_account = next_account_info(accounts_iter)?;
         // let rent = &Rent::from_account_info(next_account_info(accounts_iter)?)?;
         let spl_token_program = next_account_info(accounts_iter)?;
+        let all_game_squares_list_account = next_account_info(accounts_iter)?;
 
         // Dont allow minting if before auction_end_slot
         let current_slot = Clock::from_account_info(sysvar_account)?.slot;
@@ -258,6 +267,16 @@ impl Processor {
             account_infos,
             &[&mint_signer_seeds],
         )?;
+
+        // Save a GameSquare into the all game squares list account
+        let mut all_game_squares_list_info = GameSquare::unpack_unchecked(&all_game_squares_list_account.data.borrow())?;
+
+        all_game_squares_list_info.game_square_number = 1;
+        all_game_squares_list_info.team_number = 1;
+        all_game_squares_list_info.health_number = 1000000;
+        all_game_squares_list_info.mint_pubkey = *mint_account.key;
+
+        GameSquare::pack(all_game_squares_list_info, &mut all_game_squares_list_account.data.borrow_mut())?;
 
         msg!("Mint NFT successful");
         Ok(())
