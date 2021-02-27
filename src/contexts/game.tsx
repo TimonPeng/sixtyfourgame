@@ -175,38 +175,40 @@ export const getGameSquares = async (
   connection: Connection,
   allGameSquaresListPubkey: PublicKey,
 ) => {
-    var game_square_number_int = 0;
-    var team_number_int = 0;
-    var health_number_int = 0;
-    var mint_pubkey = '';
+
+    var MAX_SQUARES = 64;
+    var gameSquareList:any[] = new Array(0);
     try {
         let info = await getAccountInfo(connection, allGameSquaresListPubkey);
 
-        // TODO: all 64 squares
+        for(var i = 0;i<MAX_SQUARES;i++) {
 
-        const game_square_number = info.data.slice(0, 7);
-        game_square_number_int = byteArrayToLong(game_square_number);
+            var offset = i * 56;
 
-        const team_number = info.data.slice(8, 15);
-        team_number_int = byteArrayToLong(team_number);
+            const game_square_number = info.data.slice(offset, offset + 7);
+            const game_square_number_int = byteArrayToLong(game_square_number);
+            const team_number = info.data.slice(offset + 8, offset + 15);
+            const team_number_int = byteArrayToLong(team_number);
+            const health_number = info.data.slice(offset + 16, offset + 23);
+            const health_number_int = byteArrayToLong(health_number);
+            const mint_pubkey_bytes = info.data.slice(offset + 24, offset + 56);
+            const key = new PublicKey(Buffer.from(mint_pubkey_bytes));
+            const mint_pubkey = key.toBase58();
 
-        const health_number = info.data.slice(16, 23);
-        health_number_int = byteArrayToLong(health_number);
-
-        const mint_pubkey_bytes = info.data.slice(24, 56);
-        var key = new PublicKey(Buffer.from(mint_pubkey_bytes));
-        mint_pubkey = key.toBase58();
-
+            if (mint_pubkey != "11111111111111111111111111111111") {
+              var gameSquare =  {
+                  game_square_number: game_square_number_int,
+                  team_number: team_number_int,
+                  health_number: health_number_int,
+                  mint_pubkey: mint_pubkey,
+              }
+              gameSquareList.push(gameSquare);
+            }
+        }
     } catch (err) {
         console.log(err);
     }
-
-    return {
-        game_square_number: game_square_number_int,
-        team_number: team_number_int,
-        health_number: health_number_int,
-        mint_pubkey: mint_pubkey,
-    };
+    return gameSquareList;
 };
 
 export const getAuctionList = async (

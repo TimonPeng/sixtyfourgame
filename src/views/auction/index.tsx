@@ -53,6 +53,10 @@ export const AuctionView = () => {
   const [auctionEndSlot, setAuctionEndSlot] = React.useState("");
   const [auctionEndTime, setAuctionEndTime] = React.useState("");
 
+  const [prize, setPrize] = React.useState(0);
+  const [bidCount, setBidCount] = React.useState(0);
+  const [squaresMinted, setSquaresMinted] = React.useState(0);
+
   type Bid = {id: number, amount: number, bidder: string, bid_number: number};
   const [myBids , setMyBids] = React.useState<Bid[]>([]);
   const [myBidNumbers , setMyBidNumbers] = React.useState<number[]>([]);
@@ -99,6 +103,20 @@ export const AuctionView = () => {
         });
     }
   }, [wallet, connection]);
+
+  const refreshTreasuryBalance = React.useCallback(() => {
+      (async () => {
+        try {
+          const balance = await connection.getBalance(
+            treasuryPubkey,
+            "singleGossip"
+          );
+          setPrize(balance/LAMPORTS_PER_SOL);
+        } catch (err) {
+            console.log(err);
+        }
+      })();
+  }, []);
 
   useEffect(() => {
     const refreshTotal = () => {};
@@ -190,6 +208,10 @@ export const AuctionView = () => {
           var currentSlot: any = await getCurrentSlot(
               connection
           );
+
+          setBidCount(auctionInfo.bid_count);
+          setSquaresMinted(auctionInfo.squares_minted);
+
           var min = ((auctionInfo.auction_end_slot - currentSlot) * 0.4 / 60).toFixed(2);
           if (parseFloat(min) < 0) {
               setAuctionActive(0);
@@ -204,8 +226,28 @@ export const AuctionView = () => {
           );
           console.log(gameSquareData);
 
+          refreshTreasuryBalance();
+
       })();
-  }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder, setAuctionEndSlot, setAuctionEndTime, auctionInfoPubkey, setAuctionActive, allGameSquaresListPubkey, setRows, setMyBids, setMyBidNumbers, wallet]);
+  }, [
+    connected,
+    connection,
+    auctionListPubkey,
+    setCurrentBidAmount,
+    setCurrentBidder,
+    setAuctionEndSlot,
+    setAuctionEndTime,
+    auctionInfoPubkey,
+    setAuctionActive,
+    allGameSquaresListPubkey,
+    setRows,
+    setMyBids,
+    setMyBidNumbers,
+    wallet,
+    setPrize,
+    setBidCount,
+    setSquaresMinted,
+  ]);
 
   if(refresh) {
     setRefresh(0);
@@ -229,6 +271,7 @@ export const AuctionView = () => {
             :
             <h4>Auction ended</h4>
         }
+        <h4>The Prize: {prize} SOL - Bid Count: {bidCount} - GameSquares Minted: {squaresMinted}</h4>
       </Col>
 
       <Col span={12} >

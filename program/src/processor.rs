@@ -302,7 +302,8 @@ impl Processor {
         )?;
 
         // Save a GameSquare into the all game squares list account
-        let mut all_game_squares_list_info = GameSquare::unpack_unchecked(&all_game_squares_list_account.data.borrow())?;
+        let mut offset = (auction_info.squares_minted * 56) as usize;
+        let mut all_game_squares_list_info = GameSquare::unpack_unchecked(&all_game_squares_list_account.data.borrow()[offset..(offset + 56)])?;
 
         let game_square_number = auction_info.squares_minted;
         all_game_squares_list_info.game_square_number = game_square_number;
@@ -310,13 +311,13 @@ impl Processor {
         all_game_squares_list_info.health_number = 100000000;
         all_game_squares_list_info.mint_pubkey = *mint_account.key;
 
-        GameSquare::pack(all_game_squares_list_info, &mut all_game_squares_list_account.data.borrow_mut())?;
+        GameSquare::pack(all_game_squares_list_info, &mut all_game_squares_list_account.data.borrow_mut()[offset..(offset + 56)])?;
 
         auction_info.squares_minted += 1;
         AuctionInfo::pack(auction_info, &mut auction_info_account.data.borrow_mut())?;
 
-        // Save a BidEntry into the auction list account
-        let offset = (highest_bid_bid_number * 48) as usize;
+        // Get Update amount to 0 to
+        offset = (highest_bid_bid_number * 48) as usize;
         let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow()[offset..(offset + 48)])?;
 
         // Zero out lamports so no duplicates

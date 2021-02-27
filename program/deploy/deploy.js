@@ -279,7 +279,7 @@ export async function loadProgram(): Promise<void> {
       console.log('allGameSquaresListAccountSecretKey   ', allGameSquaresListAccountSecretKey);
 
       // Account needs data for 64 GameSquares
-      let gameSquareCount = 1;
+      let gameSquareCount = 64;
       let space = gameSquareCount * 56;
       console.log('allGameSquaresList using ', space.toString(), ' allocated bytes');
 
