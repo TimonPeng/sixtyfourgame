@@ -8,8 +8,10 @@ import { useConnection, useConnectionConfig } from "../../contexts/connection";
 import { useWallet } from "../../contexts/wallet";
 import { useMarkets } from "../../contexts/market";
 import { formatNumber } from "../../utils/utils";
-import { getAuctionList, getAuctionEndSlot, getCurrentSlot, sendClaimSequence, sendBidSequence, getGameSquares } from "../../contexts/game"
+import { getAuctionList, getAuctionInfo, getCurrentSlot, sendClaimSequence, sendBidSequence, getGameSquares } from "../../contexts/game"
 import configData from "../../config.json";
+import { DataGrid, ColDef, RowsProp, CellParams } from '@material-ui/data-grid';
+import { notify } from "../../utils/notifications";
 
 import {
   Account,
@@ -22,14 +24,14 @@ let payerAccount = new Account(Buffer.from(configData.payerSecretKey, "base64"))
 let auctionListPubkey = new PublicKey(configData.auctionListPubkey);
 let allGameSquaresListPubkey = new PublicKey(configData.allGameSquaresListPubkey);
 let treasuryPubkey = new PublicKey(configData.treasuryPubkey);
-let auctionEndSlotPubkey = new PublicKey(configData.auctionEndSlotPubkey);
+let auctionInfoPubkey = new PublicKey(configData.auctionInfoPubkey);
 
 console.log('programId ', programId);
 console.log('configData.payerSecretKey ', configData.payerSecretKey);
 console.log('auctionListPubkey ', auctionListPubkey.toBase58());
 console.log('allGameSquaresListPubkey ', allGameSquaresListPubkey.toBase58());
 console.log('treasuryPubkey ', treasuryPubkey.toBase58());
-console.log('auctionEndSlotPubkey ', auctionEndSlotPubkey.toBase58());
+console.log('auctionInfoPubkey ', auctionInfoPubkey.toBase58());
 
 let splTokenProgramPubKey = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 let sysvarClockPubKey = new PublicKey('SysvarC1ock11111111111111111111111111111111');
@@ -48,9 +50,35 @@ export const AuctionView = () => {
   const [currentBidAmount, setCurrentBidAmount] = React.useState(0);
   const [auctionActive, setAuctionActive] = React.useState(1);
 
-
   const [auctionEndSlot, setAuctionEndSlot] = React.useState("");
   const [auctionEndTime, setAuctionEndTime] = React.useState("");
+
+  type Bid = {id: number, amount: number, bidder: string, bid_number: number};
+  const [myBids , setMyBids] = React.useState<Bid[]>([]);
+  const [myBidNumbers , setMyBidNumbers] = React.useState<number[]>([]);
+  const [rows, setRows] = React.useState([
+      { id: 0, bidder: "There are no bids", bid_number: -1, bidder_pubkey: ''}
+  ]);
+
+  const columns: ColDef[] = [
+    {
+      field: 'bid_number',
+      headerName: 'Action',
+      width: 110,
+      headerClassName: 'text-white',
+      renderCell: (params: CellParams) => (
+          <strong>
+            { connected && myBidNumbers.indexOf(params.value as number) != -1 ?
+              <form onSubmit={handleSubmitClaim}>
+                <input className="display-none" type="number" name="bid_number" value={params.value as number} />
+                <input className="button" type="submit" value={auctionActive ? 'Cancel' : 'Resolve'} />
+              </form> : <p></p> }
+          </strong>
+      ),
+    },
+    { field: 'amount', headerName: 'Bid Amount (SOL)', width: 200, headerClassName: 'text-white'},
+    { field: 'bidder', headerName: 'Bid Pubkey', width: 400, headerClassName: 'text-white' },
+  ];
 
   const balance = useMemo(
     () => formatNumber.format((account?.lamports || 0) / LAMPORTS_PER_SOL),
@@ -60,6 +88,17 @@ export const AuctionView = () => {
   const refreshBidAmount = React.useCallback((event) => {
       setBidAmount(event.target.value);
   }, []);
+
+  const airdrop = React.useCallback(() => {
+    if (wallet) {
+        connection.requestAirdrop(wallet.publicKey as any, 2 * LAMPORTS_PER_SOL).then(() => {
+          notify({
+            message: "Airdrop successful",
+            type: "success",
+          });
+        });
+    }
+  }, [wallet, connection]);
 
   useEffect(() => {
     const refreshTotal = () => {};
@@ -79,7 +118,6 @@ export const AuctionView = () => {
 
   const handleSubmit = React.useCallback((event) => {
       event.preventDefault();
-      console.log('submitting bid');
       if (connected) {
           (async () => {
               await sendBidSequence(
@@ -90,26 +128,34 @@ export const AuctionView = () => {
                   payerAccount,
                   auctionListPubkey,
                   treasuryPubkey,
-                  auctionEndSlotPubkey,
+                  auctionInfoPubkey,
                   sysvarClockPubKey
               );
               setRefresh(1);
           })();
       }
-  }, [connected, bidAmount, wallet, connection, programId, payerAccount, auctionListPubkey, treasuryPubkey, auctionEndSlotPubkey, sysvarClockPubKey]);
+  }, [connected, bidAmount, wallet, connection, programId, payerAccount, auctionListPubkey, treasuryPubkey, auctionInfoPubkey, sysvarClockPubKey]);
 
 
   const handleSubmitClaim = React.useCallback((event) => {
       event.preventDefault();
-      console.log('submitting claim');
       if (connected) {
           (async () => {
+              let bidEntryPubkeyStr = '';
+              let bidNumber = event.target.elements.bid_number.value;
+              rows.forEach(function(item) {
+                  if (item.bid_number == bidNumber) {
+                      bidEntryPubkeyStr = item.bidder;
+                  }
+              });
+              let bidEntryPubkey: PublicKey = new PublicKey(bidEntryPubkeyStr);
               await sendClaimSequence(
                   wallet,
                   connection,
                   programId,
+                  bidEntryPubkey,
                   auctionListPubkey,
-                  auctionEndSlotPubkey,
+                  auctionInfoPubkey,
                   sysvarClockPubKey,
                   splTokenProgramPubKey,
                   allGameSquaresListPubkey
@@ -117,32 +163,38 @@ export const AuctionView = () => {
               setRefresh(1);
           })();
       }
-  }, [connected, bidAmount, wallet, connection, programId, auctionListPubkey, auctionEndSlotPubkey, sysvarClockPubKey, splTokenProgramPubKey, allGameSquaresListPubkey]);
+  }, [connected, bidAmount, wallet, connection, programId, auctionListPubkey, auctionInfoPubkey, sysvarClockPubKey, splTokenProgramPubKey, allGameSquaresListPubkey, rows]);
 
   const handleUpdateAuctionList = React.useCallback(() => {
-      console.log('getting auction list');
       (async () => {
-          type BidEntry = { amount: number; bidder: string };
-          var auctionData: BidEntry = await getAuctionList(
+          var auctionData: any[] = await getAuctionList(
               connection,
               auctionListPubkey
           );
-          console.log(auctionData)
-          setCurrentBidder(auctionData.bidder);
-          setCurrentBidAmount(auctionData.amount);
+          var _myBids: any[] = [];
+          var _myBidNumbers: any[] = [];
+          auctionData.forEach(function(item) {
+              if (typeof wallet !== "undefined" && item.bidder == wallet.publicKey) {
+                  _myBids.push(item);
+                  _myBidNumbers.push(item.bid_number);
+              }
+          });
+          setMyBids(_myBids);
+          setMyBidNumbers(_myBidNumbers);
+          setRows(auctionData);
 
-          var auctionEndSlot: any = await getAuctionEndSlot(
+          var auctionInfo: any = await getAuctionInfo(
               connection,
-              auctionEndSlotPubkey
+              auctionInfoPubkey
           );
           var currentSlot: any = await getCurrentSlot(
               connection
           );
-          var min = ((auctionEndSlot - currentSlot) * 0.4 / 60).toFixed(2);
+          var min = ((auctionInfo.auction_end_slot - currentSlot) * 0.4 / 60).toFixed(2);
           if (parseFloat(min) < 0) {
               setAuctionActive(0);
           } else {
-              setAuctionEndSlot(auctionEndSlot);
+              setAuctionEndSlot(auctionInfo.auction_end_slot);
               setAuctionEndTime(min);
           }
 
@@ -151,34 +203,55 @@ export const AuctionView = () => {
               allGameSquaresListPubkey
           );
           console.log(gameSquareData);
+
       })();
-  }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder, setAuctionEndSlot, setAuctionEndTime, auctionEndSlotPubkey, setAuctionActive, allGameSquaresListPubkey]);
+  }, [connected, connection, auctionListPubkey, setCurrentBidAmount, setCurrentBidder, setAuctionEndSlot, setAuctionEndTime, auctionInfoPubkey, setAuctionActive, allGameSquaresListPubkey, setRows, setMyBids, setMyBidNumbers, wallet]);
 
   if(refresh) {
     setRefresh(0);
     handleUpdateAuctionList();
   }
 
+  useEffect(() => {
+    if (wallet && connected) {
+      setRefresh(1);
+    }
+    return () => {};
+  }, [wallet, connected, setRefresh]);
+
   return (
     <Row gutter={[16, 16]} align="middle">
       <Col span={24}>
         <h2>Auction</h2>
         <h4>Highest 64 bidders get the 64 gameboard squares</h4>
+        { auctionActive ?
+            <h4>Auction ends at slot {auctionEndSlot} (approx {auctionEndTime} mintues)</h4>
+            :
+            <h4>Auction ended</h4>
+        }
       </Col>
 
-      <Col span={24}>
-          <h4>Current bidder: {currentBidder}</h4>
-          <h4>Current bid amount: {currentBidAmount / LAMPORTS_PER_SOL} SOL</h4>
-          { auctionActive ?
-              <h4>Auction ends at slot {auctionEndSlot} (approx {auctionEndTime} mintues)</h4>
-              :
-              <h4>Auction ended</h4>
-          }
+      <Col span={12} >
+          <h3>Highest Bidders</h3>
+          <div style={{ color: 'white', height: 500, width: '100%' }}>
+            <DataGrid
+                rows={rows}
+                columns={columns}
+                sortModel={[
+                    {
+                      field: 'amount',
+                      sort: 'desc',
+                    },
+              ]}/>
+          </div>
       </Col>
 
-      { connected && auctionActive &&
-        (<Col span={24}>
+      { connected && auctionActive ?
+        (<Col span={12}>
           <h3>Create New Bid</h3>
+          <ConnectButton type="primary" onClick={airdrop}>
+            Airdrop
+          </ConnectButton>
           <form onSubmit={handleSubmit}>
             <label>
               Bid Amount (SOL):
@@ -186,35 +259,34 @@ export const AuctionView = () => {
             </label>
             <input className="text-black" type="submit" value="Submit" />
           </form>
-        </Col>)
+        </Col>) : (
+          <Col span={0}>
+          </Col>
+        )
       }
+
+      { connected && !auctionActive ?
+        (<Col span={12}>
+          <h3>Auction Completed</h3>
+          <h3>Claim your GameSquare NFT or return your funds</h3>
+          <h3>by clicking the "Resolve" button in the table</h3>
+        </Col>) : (
+          <Col span={0}>
+          </Col>
+        )
+      }
+
       { !connected &&
-        (<Col span={24}>
+        <Col span={12}>
           <ConnectButton
             type="text"
             size="large"
             allowWalletChange={true}
             style={{ color: "#2abdd2" }}
           />
-        </Col>)
-      }
-      { connected && !auctionActive &&
-        (<Col span={24}>
-          <h3>Claim your Game Square!</h3>
-          <form onSubmit={handleSubmitClaim}>
-            <input className="text-black" type="submit" value="Claim" />
-          </form>
-        </Col>)
+        </Col>
       }
 
-      { connected ?
-        (<Col span={24}>
-            <h3>My Bid</h3>
-            You have no bid
-        </Col>) : (
-          <Col span={24}></Col>
-        )
-      }
       <Col span={8}>
         <Link to="/auction">
           <Button>Auction</Button>

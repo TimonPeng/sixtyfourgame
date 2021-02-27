@@ -27,7 +27,7 @@ use thiserror::Error;
 use crate::{
     error::SixtyFourGameError,
     instruction::SixtyFourGameInstruction,
-    state::{BidEntry, AuctionEndSlot, GameSquare},
+    state::{BidEntry, AuctionInfo, GameSquare},
 };
 
 pub struct Processor;
@@ -42,7 +42,7 @@ impl Processor {
         match instruction {
             SixtyFourGameInstruction::InititateAuction { auction_end_slot } => {
                 msg!("SixtyFourGameInstruction: InititateAuction");
-                Self::process_auction_end_slot(accounts, auction_end_slot, program_id)
+                Self::process_initiate_auction(accounts, auction_end_slot, program_id)
             }
             SixtyFourGameInstruction::Bid { amount } => {
                 msg!("SixtyFourGameInstruction: Bid");
@@ -71,7 +71,7 @@ impl Processor {
         }
     }
 
-    pub fn process_auction_end_slot(
+    pub fn process_initiate_auction(
         accounts: &[AccountInfo],
         auction_end_slot: u64,
         program_id: &Pubkey,
@@ -82,29 +82,30 @@ impl Processor {
         msg!("Setting Auction End Slot to:");
         msg!(auction_end_slot_str);
 
-        let accounts_iter = &mut accounts.iter();
-
         // Set accounts
+        let accounts_iter = &mut accounts.iter();
         let admin_account = next_account_info(accounts_iter)?;
-        let auction_end_slot_account = next_account_info(accounts_iter)?;
+        let auction_info_account = next_account_info(accounts_iter)?;
 
         // Save a BidEntry into the auction list account
-        let mut auction_end_slot_info = AuctionEndSlot::unpack_unchecked(&auction_end_slot_account.data.borrow())?;
+        let mut auction_info = AuctionInfo::unpack_unchecked(&auction_info_account.data.borrow())?;
 
         // TODO; admin only
-        if auction_end_slot_info.auction_enabled {
+        if auction_info.auction_enabled {
             msg!("Auction already started");
             return Err(ProgramError::InvalidAccountData);
         }
 
-        auction_end_slot_info.auction_end_slot = auction_end_slot;
-        auction_end_slot_info.auction_enabled = true;
+        auction_info.bid_count = 0;
+        auction_info.squares_minted = 0;
+        auction_info.auction_end_slot = auction_end_slot;
+        auction_info.auction_enabled = true;
 
         msg!("Saving auction end slot");
 
-        AuctionEndSlot::pack(auction_end_slot_info, &mut auction_end_slot_account.data.borrow_mut())?;
+        AuctionInfo::pack(auction_info, &mut auction_info_account.data.borrow_mut())?;
 
-        msg!("AuctionEndSlot successful");
+        msg!("InitAuction successful");
         Ok(())
     }
 
@@ -114,21 +115,25 @@ impl Processor {
         program_id: &Pubkey,
     ) -> ProgramResult {
 
-        let accounts_iter = &mut accounts.iter();
         // Set accounts
+        let accounts_iter = &mut accounts.iter();
         let bidder_account = next_account_info(accounts_iter)?;
         let auction_list_account = next_account_info(accounts_iter)?;
         let treasury_fund_account = next_account_info(accounts_iter)?;
         let treasury_account = next_account_info(accounts_iter)?;
-        let auction_end_slot_account = next_account_info(accounts_iter)?;
+        let auction_info_account = next_account_info(accounts_iter)?;
         let sysvar_account = next_account_info(accounts_iter)?;
 
         // Dont allow bidding if after auction_end_slot
+        let max_bid_count = 1000;
         let current_slot = Clock::from_account_info(sysvar_account)?.slot;
-        let mut auction_end_slot_info = AuctionEndSlot::unpack_unchecked(&auction_end_slot_account.data.borrow())?;
-        if !auction_end_slot_info.auction_enabled || auction_end_slot_info.auction_end_slot < current_slot {
-            msg!("Auction is not active");
-            return Err(ProgramError::InvalidAccountData);
+        let mut auction_info = AuctionInfo::unpack_unchecked(&auction_info_account.data.borrow())?;
+        if !auction_info.auction_enabled ||
+            auction_info.auction_end_slot < current_slot ||
+            auction_info.bid_count >= max_bid_count ||
+            auction_info.squares_minted > 0 {
+            msg!("Auction is not active or bids have reached capacity");
+            return Err(ProgramError::InvalidAccountData); // TODO
         }
 
         msg!("Auction active");
@@ -139,16 +144,21 @@ impl Processor {
         msg!("Lamports transfered");
 
         // Save a BidEntry into the auction list account
-        let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow())?;
+        let offset = (auction_info.bid_count * 48) as usize;
+        let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow()[offset..(offset + 48)])?;
 
         msg!("Setting data");
 
+        auction_list_info.bid_number = auction_info.bid_count;
         auction_list_info.amount_lamports = amount;
         auction_list_info.bidder_pubkey = *bidder_account.key;
 
         msg!("Saving data");
+        BidEntry::pack(auction_list_info, &mut auction_list_account.data.borrow_mut()[offset..(offset + 48)])?;
 
-        BidEntry::pack(auction_list_info, &mut auction_list_account.data.borrow_mut())?;
+        // Increment bid counter
+        auction_info.bid_count = auction_info.bid_count + 1;
+        AuctionInfo::pack(auction_info, &mut auction_info_account.data.borrow_mut())?;
 
         msg!("Bid successful");
         Ok(())
@@ -174,22 +184,45 @@ impl Processor {
         let accounts_iter = &mut accounts.iter();
         // Set accounts
         let payer_account = next_account_info(accounts_iter)?;
+        let bid_entry_account = next_account_info(accounts_iter)?;
         let auction_list_account = next_account_info(accounts_iter)?;
-        let auction_end_slot_account = next_account_info(accounts_iter)?;
+        let auction_info_account = next_account_info(accounts_iter)?;
         let sysvar_account = next_account_info(accounts_iter)?;
         let mint_account = next_account_info(accounts_iter)?;
         let token_account = next_account_info(accounts_iter)?;
         let mint_pda_account = next_account_info(accounts_iter)?;
         let rent_account = next_account_info(accounts_iter)?;
-        // let rent = &Rent::from_account_info(next_account_info(accounts_iter)?)?;
         let spl_token_program = next_account_info(accounts_iter)?;
         let all_game_squares_list_account = next_account_info(accounts_iter)?;
 
-        // Dont allow minting if before auction_end_slot
+        // Dont allow minting if before auction_info
         let current_slot = Clock::from_account_info(sysvar_account)?.slot;
-        let mut auction_end_slot_info = AuctionEndSlot::unpack_unchecked(&auction_end_slot_account.data.borrow())?;
-        if !auction_end_slot_info.auction_enabled || auction_end_slot_info.auction_end_slot >= current_slot {
+        let mut auction_info = AuctionInfo::unpack_unchecked(&auction_info_account.data.borrow())?;
+        if !auction_info.auction_enabled ||
+            auction_info.auction_end_slot >= current_slot {
             msg!("Auction is active, cannot mint");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        // Max bid count tested at 1000 here, used 15k/20k
+        let mut highest_bid_amount_lamports = 0;
+        let mut highest_bid_bid_number = 0;
+        let mut highest_bidder_pubkey = *mint_pda_account.key; //placeholder, TODO:fix this
+        for i in 0..auction_info.bid_count {
+
+            // Fetch BidEntry to get highest
+            let offset = (i * 48) as usize;
+            let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow()[offset..(offset + 48)])?;
+
+            if highest_bid_amount_lamports < auction_list_info.amount_lamports {
+                 highest_bid_amount_lamports = auction_list_info.amount_lamports;
+                 highest_bidder_pubkey = auction_list_info.bidder_pubkey;
+                 highest_bid_bid_number = auction_list_info.bid_number;
+            }
+        }
+
+        if highest_bidder_pubkey != *bid_entry_account.key {
+            msg!("Trying to MintNFT for account that is not the higest bidder");
             return Err(ProgramError::InvalidAccountData);
         }
 
@@ -271,12 +304,27 @@ impl Processor {
         // Save a GameSquare into the all game squares list account
         let mut all_game_squares_list_info = GameSquare::unpack_unchecked(&all_game_squares_list_account.data.borrow())?;
 
-        all_game_squares_list_info.game_square_number = 1;
-        all_game_squares_list_info.team_number = 1;
-        all_game_squares_list_info.health_number = 1000000;
+        let game_square_number = auction_info.squares_minted;
+        all_game_squares_list_info.game_square_number = game_square_number;
+        all_game_squares_list_info.team_number = game_square_number % 4;
+        all_game_squares_list_info.health_number = 100000000;
         all_game_squares_list_info.mint_pubkey = *mint_account.key;
 
         GameSquare::pack(all_game_squares_list_info, &mut all_game_squares_list_account.data.borrow_mut())?;
+
+        auction_info.squares_minted += 1;
+        AuctionInfo::pack(auction_info, &mut auction_info_account.data.borrow_mut())?;
+
+        // Save a BidEntry into the auction list account
+        let offset = (highest_bid_bid_number * 48) as usize;
+        let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow()[offset..(offset + 48)])?;
+
+        // Zero out lamports so no duplicates
+        msg!("Zeroing data");
+        auction_list_info.amount_lamports = 0;
+
+        msg!("Saving data");
+        BidEntry::pack(auction_list_info, &mut auction_list_account.data.borrow_mut()[offset..(offset + 48)])?;
 
         msg!("Mint NFT successful");
         Ok(())

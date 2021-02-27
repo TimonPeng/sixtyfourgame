@@ -87,7 +87,7 @@ async function loadStore() {
     const store = new Store();
     let payerAccount;
     let programId;
-    let auctionEndSlotPubkey;
+    let auctionInfoPubkey;
     let auctionListPubkey;
     let treasuryPubkey;
     let allGameSquaresListPubkey;
@@ -99,8 +99,8 @@ async function loadStore() {
       if (config.auctionListPubkey !== "") {
           auctionListPubkey = new PublicKey(config.auctionListPubkey);
       }
-      if (config.auctionEndSlotPubkey !== "") {
-          auctionEndSlotPubkey = new PublicKey(config.auctionEndSlotPubkey);
+      if (config.auctionInfoPubkey !== "") {
+          auctionInfoPubkey = new PublicKey(config.auctionInfoPubkey);
       }
       if (config.allGameSquaresListPubkey !== "") {
           allGameSquaresListPubkey = new PublicKey(config.allGameSquaresListPubkey);
@@ -115,16 +115,16 @@ async function loadStore() {
     } catch (err) {
       console.log(err);
     }
-    return [store, programId, payerAccount, auctionListPubkey, treasuryPubkey, auctionEndSlotPubkey, allGameSquaresListPubkey];
+    return [store, programId, payerAccount, auctionListPubkey, treasuryPubkey, auctionInfoPubkey, allGameSquaresListPubkey];
 }
 
-async function saveStore(store, urlTls, programId, payerSecretKey, auctionListPubkey, treasuryPubkey, auctionEndSlotPubkey, allGameSquaresListPubkey) {
+async function saveStore(store, urlTls, programId, payerSecretKey, auctionListPubkey, treasuryPubkey, auctionInfoPubkey, allGameSquaresListPubkey) {
     try {
       await store.save('config.json', {
         url: urlTls,
         programId: typeof programId !== 'undefined' ? programId.toBase58() : '',
         auctionListPubkey: typeof auctionListPubkey !== 'undefined' ? auctionListPubkey.toBase58() : '',
-        auctionEndSlotPubkey: typeof auctionEndSlotPubkey !== 'undefined' ? auctionEndSlotPubkey.toBase58() : '',
+        auctionInfoPubkey: typeof auctionInfoPubkey !== 'undefined' ? auctionInfoPubkey.toBase58() : '',
         allGameSquaresListPubkey: typeof allGameSquaresListPubkey !== 'undefined' ? allGameSquaresListPubkey.toBase58() : '',
         treasuryPubkey: typeof treasuryPubkey !== 'undefined' ? treasuryPubkey.toBase58() : '',
         payerSecretKey: typeof payerSecretKey !== 'undefined' ? payerSecretKey : '',
@@ -145,7 +145,7 @@ export async function establishOwner(): Promise<void> {
       payerAccount,
       auctionListPubkey,
       treasuryPubkey,
-      auctionEndSlotPubkey,
+      auctionInfoPubkey,
       allGameSquaresListPubkey
   ] = await loadStore();
   if (!payerAccount) {
@@ -182,7 +182,7 @@ export async function establishOwner(): Promise<void> {
     payerSecretKey,
     auctionListPubkey,
     treasuryPubkey,
-    auctionEndSlotPubkey,
+    auctionInfoPubkey,
     allGameSquaresListPubkey
   );
 }
@@ -198,7 +198,7 @@ export async function loadProgram(): Promise<void> {
     payerAccount,
     auctionListPubkey,
     treasuryPubkey,
-    auctionEndSlotPubkey,
+    auctionInfoPubkey,
     allGameSquaresListPubkey
   ] = await loadStore();
   let loaded = false;
@@ -240,8 +240,9 @@ export async function loadProgram(): Promise<void> {
       let auctionListAccountSecretKey = Buffer.from(auctionListAccount.secretKey).toString("base64");
       console.log('auctionListAccountSecretKey   ', auctionListAccountSecretKey);
 
-      // Account needs data for 64 pubkeys plus 64 lamport amounts in u64
-      let space = (1 * 32) + (1 * 8);
+      // Account needs data for 64 pubkeys, u64, u64
+      let numBids = 1000;
+      let space = numBids * 48;
       console.log('Auction List using ', space.toString(), ' allocated bytes');
 
       // Get rent exempt amount of lamports
@@ -278,7 +279,8 @@ export async function loadProgram(): Promise<void> {
       console.log('allGameSquaresListAccountSecretKey   ', allGameSquaresListAccountSecretKey);
 
       // Account needs data for 64 GameSquares
-      let space = (1 * 8) + (1 * 32) + (1 * 8) + (1* 8);
+      let gameSquareCount = 1;
+      let space = gameSquareCount * 56;
       console.log('allGameSquaresList using ', space.toString(), ' allocated bytes');
 
       // Get rent exempt amount of lamports
@@ -342,28 +344,28 @@ export async function loadProgram(): Promise<void> {
   }
   console.log("Treasury address: " + treasuryPubkey.toBase58());
 
-  if (typeof auctionEndSlotPubkey == "undefined" || auctionEndSlotPubkey == "") {
-      // Create the auctionList account
-      const auctionEndSlotAccount = new Account();
-      auctionEndSlotPubkey = auctionEndSlotAccount.publicKey;
-      console.log('Creating auctionEndSlot with address ', auctionEndSlotPubkey.toBase58(), ' for the game');
+  if (typeof auctionInfoPubkey == "undefined" || auctionInfoPubkey == "") {
+      // Create the auctionInfo account
+      const auctionInfoAccount = new Account();
+      auctionInfoPubkey = auctionInfoAccount.publicKey;
+      console.log('Creating auctionInfo with address ', auctionInfoPubkey.toBase58(), ' for the game');
 
-      let auctionEndSlotAccountSecretKey = Buffer.from(auctionEndSlotAccount.secretKey).toString("base64");
-      console.log('auctionEndSlotAccountSecretKey   ', auctionEndSlotAccountSecretKey);
+      let auctionInfoAccountSecretKey = Buffer.from(auctionInfoAccount.secretKey).toString("base64");
+      console.log('auctionInfoAccountSecretKey   ', auctionInfoAccountSecretKey);
 
-      // Account needs 9 bytes for u64 slot end
-      let space = 9;
-      console.log('auctionEndSlot using ', space.toString(), ' allocated bytes');
+      // Account needs 25 bytes for auction info
+      let space = 25;
+      console.log('auctionInfo using ', space.toString(), ' allocated bytes');
 
       // Get rent exempt amount of lamports
       const lamports =  await connection.getMinimumBalanceForRentExemption(space);
-      console.log('Rent-exempt lamports for auctionEndSlot: ',lamports.toString());
+      console.log('Rent-exempt lamports for auctionInfo: ',lamports.toString());
 
-      // Create Auction List
+      // Create auctionInfo
       const transaction = new Transaction().add(
         SystemProgram.createAccount({
           fromPubkey: payerAccount.publicKey,
-          newAccountPubkey: auctionEndSlotPubkey,
+          newAccountPubkey: auctionInfoPubkey,
           lamports,
           space,
           programId,
@@ -374,15 +376,15 @@ export async function loadProgram(): Promise<void> {
         connection,
         transaction,
         payerAccount,
-        auctionEndSlotAccount,
+        auctionInfoAccount,
       );
   }
-  console.log("auctionEndSlot address: " + auctionEndSlotPubkey.toBase58());
+  console.log("auctionInfo address: " + auctionInfoPubkey.toBase58());
 
   // Set Auction end slot
   let epochInfo = await connection.getEpochInfo();
   let lastSlot = epochInfo.absoluteSlot;
-  let auctionEndMinutes = 0.5;
+  let auctionEndMinutes = 1;
   let blocktime = 0.4;
   let auctionEndSlot = lastSlot + Math.ceil(auctionEndMinutes * 60 / blocktime);
 
@@ -391,7 +393,7 @@ export async function loadProgram(): Promise<void> {
 
   const instruction = new TransactionInstruction({
       keys: [{pubkey: payerAccount.publicKey, isSigner: true, isWritable: true},
-          {pubkey: auctionEndSlotPubkey, isSigner: false, isWritable: true}],
+          {pubkey: auctionInfoPubkey, isSigner: false, isWritable: true}],
       programId,
       data: Buffer.from([0, ...longToByteArray(auctionEndSlot)])
   });
@@ -413,7 +415,7 @@ export async function loadProgram(): Promise<void> {
     payerSecretKey,
     auctionListPubkey,
     treasuryPubkey,
-    auctionEndSlotPubkey,
+    auctionInfoPubkey,
     allGameSquaresListPubkey
   );
 }

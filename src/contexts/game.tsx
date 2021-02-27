@@ -35,7 +35,6 @@ function byteArrayToLong(byteArray: any) {
     for ( var i = byteArray.length - 1; i >= 0; i--) {
         value = (value * 256) + byteArray[i];
     }
-
     return value;
 };
 
@@ -80,7 +79,7 @@ export const sendBidSequence = async (
                {pubkey: auctionListPubkey, isSigner: false, isWritable: true},
                {pubkey: treasuryFundAccountPubKey, isSigner: true, isWritable: true},
                {pubkey: treasuryPubkey, isSigner: false, isWritable: true},
-               {pubkey: auctionEndSlotPubkey, isSigner: false, isWritable: false},
+               {pubkey: auctionEndSlotPubkey, isSigner: false, isWritable: true},
                {pubkey: sysvarClockPubKey, isSigner: false, isWritable: false}],
         programId,
         data: Buffer.from([1, ...longToByteArray(amount * LAMPORTS_PER_SOL)]),
@@ -97,6 +96,7 @@ export const sendClaimSequence = async (
   wallet: any,
   connection: any,
   programId: PublicKey,
+  bidEntryPubkey: PublicKey,
   auctionListPubkey: PublicKey,
   auctionEndSlotPubkey: PublicKey,
   sysvarClockPubKey: PublicKey,
@@ -143,8 +143,9 @@ export const sendClaimSequence = async (
     // Create new claim transaction
     const instruction = new TransactionInstruction({
         keys: [{pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+               {pubkey: bidEntryPubkey, isSigner: false, isWritable: true},
                {pubkey: auctionListPubkey, isSigner: false, isWritable: true},
-               {pubkey: auctionEndSlotPubkey, isSigner: false, isWritable: false},
+               {pubkey: auctionEndSlotPubkey, isSigner: false, isWritable: true},
                {pubkey: sysvarClockPubKey, isSigner: false, isWritable: false},
                {pubkey: mintAccount.publicKey, isSigner: true, isWritable: true},
                {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: true},
@@ -208,51 +209,66 @@ export const getGameSquares = async (
     };
 };
 
-type BidEntry = { amount: number; bidder: string };
 export const getAuctionList = async (
   connection: Connection,
   auctionListPubkey: PublicKey,
 ) => {
-    var bidder = '';
-    var amount = 0;
+
+    var MAX_BIDS = 1000;
+    var auctionList:any[] = new Array(0);
     try {
         let info = await getAccountInfo(connection, auctionListPubkey);
+        for(var i = 0;i<MAX_BIDS;i++) {
 
-        const amount_lamports = info.data.slice(0, 7);
-        const amount_lamports_int = byteArrayToLong(amount_lamports);
+            var offset = i * 48
 
-        console.log('Auction bid saved with amount: ' + amount_lamports_int);
-        amount = amount_lamports_int;
+            let bid_number = info.data.slice(offset, offset + 7);
+            let bid_number_int = byteArrayToLong(bid_number);
+            let amount_lamports = info.data.slice(offset + 8, offset + 15);
+            let amount_lamports_int = byteArrayToLong(amount_lamports);
+            let bidder_pubkey_bytes = info.data.slice(offset + 16, offset + 48);
+            var key = new PublicKey(Buffer.from(bidder_pubkey_bytes));
+            let bidder = key.toBase58();
 
-        const bidder_pubkey_bytes = info.data.slice(8, 40);
-        var key = new PublicKey(Buffer.from(bidder_pubkey_bytes));
-
-        bidder = key.toBase58();
-        console.log(bidder);
-
+            if (bidder != "11111111111111111111111111111111") {
+              var bidEntry =  {
+                  id: bid_number_int,
+                  bid_number: bid_number_int,
+                  amount: amount_lamports_int / LAMPORTS_PER_SOL,
+                  bidder: bidder,
+              }
+              auctionList.push(bidEntry);
+            }
+        };
     } catch (err) {
         console.log(err);
     }
-
-    return {
-        amount: amount,
-        bidder: bidder,
-    };
+    return auctionList;
 };
 
-export const getAuctionEndSlot = async (
+export const getAuctionInfo = async (
   connection: Connection,
-  auctionEndSlotPubkey: PublicKey,
+  auctionInfoPubkey: PublicKey,
 ) => {
+    var bid_count = 0;
+    var squares_minted = 0;
     var auction_end_slot = 0;
     try {
-        let info = await getAccountInfo(connection, auctionEndSlotPubkey);
-        const auction_end_slot_bytes = info.data.slice(0, 7);
+        let info = await getAccountInfo(connection, auctionInfoPubkey);
+        const bid_count_bytes = info.data.slice(0, 7);
+        bid_count = byteArrayToLong(bid_count_bytes);
+        const squares_minted_bytes = info.data.slice(8, 15);
+        squares_minted = byteArrayToLong(squares_minted_bytes);
+        const auction_end_slot_bytes = info.data.slice(16, 23);
         auction_end_slot = byteArrayToLong(auction_end_slot_bytes);
     } catch (err) {
         console.log(err);
     }
-    return auction_end_slot;
+    return {
+        bid_count: bid_count,
+        squares_minted: squares_minted,
+        auction_end_slot: auction_end_slot,
+    };
 };
 
 export const getCurrentSlot = async (

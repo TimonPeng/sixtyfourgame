@@ -6,6 +6,7 @@
     "@ant-design/pro-layout": "^6.7.0",
     "@craco/craco": "^5.7.0",
     "@ledgerhq/hw-transport-webusb": "^5.41.0",
+    "@material-ui/data-grid": "^4.0.0-alpha.20",
     "@project-serum/serum": "^0.13.11",
     "@project-serum/sol-wallet-adapter": "^0.1.4",
     "@solana/spl-token": "0.0.11",
