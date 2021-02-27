@@ -200,6 +200,7 @@ export const getGameSquares = async (
             if (mint_pubkey != "11111111111111111111111111111111") {
               var gameSquare =  {
                   id: game_square_number_int,
+                  is_active: false, // TODO
                   game_square_number: game_square_number_int,
                   team_number: team_number_int,
                   health_number: health_number_int,

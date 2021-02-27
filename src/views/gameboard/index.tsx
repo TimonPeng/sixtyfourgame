@@ -49,6 +49,7 @@ export const GameBoardView = () => {
   type GameSquare = {
     id: number,
     game_square_number: number,
+    is_active: boolean,
     team_number: number,
     health_number: number,
     mint_pubkey: string,
@@ -56,7 +57,7 @@ export const GameBoardView = () => {
   const [gameSquares , setGameSquares] = React.useState<GameSquare[]>([]);
   const [myGameSquares , setMyGameSquares] = React.useState<number[]>([]);
   const [rows, setRows] = React.useState([
-      { id: 0, mint_pubkey: "There are no bids", health_number: -1, team_number: -1, game_square_number: -1}
+      { id: 0, mint_pubkey: "There are no bids", is_active: "No", health_number: -1, team_number: -1, game_square_number: -1}
   ]);
 
   const columns: ColDef[] = [
@@ -72,9 +73,20 @@ export const GameBoardView = () => {
       ),
     },
     {
+      field: 'is_active',
+      headerName: 'Active',
+      width: 100,
+      headerClassName: 'text-white',
+      renderCell: (params: CellParams) => (
+          <strong>
+              {params.value ? "Yes" : "No"}
+          </strong>
+      ),
+    },
+    {
       field: 'team_number',
       headerName: 'Team',
-      width: 110,
+      width: 100,
       headerClassName: 'text-white',
       renderCell: (params: CellParams) => (
           <strong>
@@ -83,13 +95,13 @@ export const GameBoardView = () => {
               {params.value == "1" ?
                   <div className="text-blue">BLUE</div> : ""}
               {params.value == "2" ?
-                  <div className="text-orange">ORANGE</div> : ""}
-              {params.value == "3" ?
                   <div className="text-green">GREEN</div> : ""}
+              {params.value == "3" ?
+                  <div className="text-orange">ORANGE</div> : ""}
           </strong>
       ),
     },
-    { field: 'health_number', headerName: 'Health', width: 200, headerClassName: 'text-white'},
+    { field: 'health_number', headerName: 'Health', width: 110, headerClassName: 'text-white'},
     { field: 'mint_pubkey', headerName: 'Mint Pubkey', width: 400, headerClassName: 'text-white' },
   ];
 
