@@ -20,7 +20,6 @@ export const GameBoard = (props: {
   const { wallet } = useWallet();
   const { account } = useNativeAccount();
 
-  console.log(props);
   const col1 = [43,42,41,40,39,38,37,64];
   const col2 = [44,21,20,19,18,17,36,63];
   const col3 = [45,22,7,6,5,16,35,62];

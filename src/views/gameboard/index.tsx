@@ -63,15 +63,32 @@ export const GameBoardView = () => {
     {
       field: 'game_square_number',
       headerName: '#',
+      width: 60,
+      headerClassName: 'text-white',
+      renderCell: (params: CellParams) => (
+          <strong>
+              {params.value as number + 1}
+          </strong>
+      ),
+    },
+    {
+      field: 'team_number',
+      headerName: 'Team',
       width: 110,
       headerClassName: 'text-white',
       renderCell: (params: CellParams) => (
           <strong>
-              {params.value}
+              { params.value == "0" ?
+                  <div className="text-red">RED</div> : ""}
+              {params.value == "1" ?
+                  <div className="text-blue">BLUE</div> : ""}
+              {params.value == "2" ?
+                  <div className="text-orange">ORANGE</div> : ""}
+              {params.value == "3" ?
+                  <div className="text-green">GREEN</div> : ""}
           </strong>
       ),
     },
-    { field: 'team_number', headerName: 'Team', width: 110, headerClassName: 'text-white'},
     { field: 'health_number', headerName: 'Health', width: 200, headerClassName: 'text-white'},
     { field: 'mint_pubkey', headerName: 'Mint Pubkey', width: 400, headerClassName: 'text-white' },
   ];
