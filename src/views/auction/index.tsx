@@ -45,7 +45,7 @@ export const AuctionView = () => {
   const { account } = useNativeAccount();
 
   const [refresh, setRefresh] = React.useState(0);
-  const [bidAmount, setBidAmount] = React.useState(1);
+  const [bidAmount, setBidAmount] = React.useState(0.1);
   const [currentBidder, setCurrentBidder] = React.useState("");
   const [currentBidAmount, setCurrentBidAmount] = React.useState(0);
   const [auctionActive, setAuctionActive] = React.useState(1);

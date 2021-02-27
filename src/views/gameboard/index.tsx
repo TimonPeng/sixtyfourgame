@@ -3,6 +3,7 @@ import { Button, Col, Row } from "antd";
 import React, { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ConnectButton } from "../../components/ConnectButton";
+import { GameBoard } from "../../components/GameBoard";
 import { useNativeAccount } from "../../contexts/accounts";
 import { useConnection, useConnectionConfig } from "../../contexts/connection";
 import { useWallet } from "../../contexts/wallet";
@@ -146,31 +147,16 @@ export const GameBoardView = () => {
                 sortModel={[
                     {
                       field: 'game_square_number',
-                      sort: 'desc',
+                      sort: 'asc',
                     },
               ]}/>
           </div>
       </Col>
 
-      { connected ?
-        (<Col span={12}>
-          <h3>GAME BOARD HERE</h3>
-        </Col>) : (
-          <Col span={0}>
-          </Col>
-        )
-      }
-
-      { !connected &&
-        <Col span={12}>
-          <ConnectButton
-            type="text"
-            size="large"
-            allowWalletChange={true}
-            style={{ color: "#2abdd2" }}
-          />
-        </Col>
-      }
+      <Col span={12}>
+          <GameBoard
+          gameSquares={rows}/>
+      </Col>
 
       <Col span={8}>
         <Link to="/auction">
