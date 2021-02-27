@@ -194,6 +194,7 @@ impl Processor {
         let rent_account = next_account_info(accounts_iter)?;
         let spl_token_program = next_account_info(accounts_iter)?;
         let all_game_squares_list_account = next_account_info(accounts_iter)?;
+        let treasury_account = next_account_info(accounts_iter)?;
 
         // Dont allow minting if before auction_info
         let current_slot = Clock::from_account_info(sysvar_account)?.slot;
@@ -204,130 +205,152 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData);
         }
 
-        // Max bid count tested at 1000 here, used 15k/20k
-        let mut highest_bid_amount_lamports = 0;
-        let mut highest_bid_bid_number = 0;
-        let mut highest_bidder_pubkey = *mint_pda_account.key; //placeholder, TODO:fix this
-        for i in 0..auction_info.bid_count {
+        let max_game_square_count = 64;
+        if auction_info.squares_minted >= max_game_square_count {
+            for i in 0..auction_info.bid_count {
+                // Search for all bids from bid_entry_account
+                let offset = (i * 48) as usize;
+                let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow()[offset..(offset + 48)])?;
 
-            // Fetch BidEntry to get highest
-            let offset = (i * 48) as usize;
+                // REFUND USER
+                if auction_list_info.bidder_pubkey == *bid_entry_account.key {
+                    **treasury_account.lamports.borrow_mut() -= auction_list_info.amount_lamports;
+                    **bid_entry_account.lamports.borrow_mut() += auction_list_info.amount_lamports;
+
+                    // Zero out lamports so no duplicates
+                    auction_list_info.amount_lamports = 0;
+                    BidEntry::pack(auction_list_info, &mut auction_list_account.data.borrow_mut()[offset..(offset + 48)])?;
+                }
+            }
+            msg!("Bid Refund successful");
+        } else {
+
+            // Max bid count tested at 1000 here, used 15k/20k TODO: improve this
+            let mut highest_bid_amount_lamports = 0;
+            let mut highest_bid_bid_number = 0;
+            let mut highest_bidder_pubkey = *mint_pda_account.key; //placeholder, TODO:fix this
+            for i in 0..auction_info.bid_count {
+
+                // Fetch BidEntry to get highest
+                let offset = (i * 48) as usize;
+                let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow()[offset..(offset + 48)])?;
+
+                if highest_bid_amount_lamports < auction_list_info.amount_lamports {
+                     highest_bid_amount_lamports = auction_list_info.amount_lamports;
+                     highest_bidder_pubkey = auction_list_info.bidder_pubkey;
+                     highest_bid_bid_number = auction_list_info.bid_number;
+                }
+            }
+
+            if highest_bidder_pubkey != *bid_entry_account.key {
+                msg!("Trying to MintNFT for account that is not the higest bidder");
+                return Err(ProgramError::InvalidAccountData);
+            }
+
+            let mint_instr = spl_token::instruction::initialize_mint(
+                &spl_token::ID,
+                mint_account.key,
+                mint_pda_account.key,
+                Option::Some(mint_pda_account.key),
+                0
+            )?;
+
+            let account_infos = &[
+                mint_account.clone(),
+                spl_token_program.clone(),
+                rent_account.clone(),
+                mint_pda_account.clone()
+            ];
+
+            invoke_signed(
+                &mint_instr,
+                account_infos,
+                &[],
+            )?;
+            msg!("InitMint successful");
+
+            let init_account_instr = spl_token::instruction::initialize_account(
+                &spl_token::ID,
+                token_account.key,
+                mint_account.key,
+                payer_account.key,
+            )?;
+
+            let init_account_account_infos = &[
+                token_account.clone(),
+                mint_account.clone(),
+                payer_account.clone(),
+                rent_account.clone()
+            ];
+
+            msg!("Initializing token account");
+
+            invoke_signed(
+                &init_account_instr,
+                init_account_account_infos,
+                &[],
+            )?;
+
+            let (mint_address, mint_bump_seed) = Pubkey::find_program_address(&[b"mint"], &program_id);
+
+            let mint_to_instr = spl_token::instruction::mint_to(
+                &spl_token::ID,
+                mint_account.key,
+                token_account.key,
+                mint_pda_account.key,
+                &[],
+                1,
+            )?;
+
+            let account_infos = &[
+                mint_account.clone(),
+                token_account.clone(),
+                spl_token_program.clone(),
+                mint_pda_account.clone()
+            ];
+
+            let mint_signer_seeds: &[&[_]] = &[
+                b"mint",
+                &[mint_bump_seed],
+            ];
+
+            msg!("Minting");
+
+            invoke_signed(
+                &mint_to_instr,
+                account_infos,
+                &[&mint_signer_seeds],
+            )?;
+
+            // Save a GameSquare into the all game squares list account
+            let mut offset = (auction_info.squares_minted * 56) as usize;
+            let mut all_game_squares_list_info = GameSquare::unpack_unchecked(&all_game_squares_list_account.data.borrow()[offset..(offset + 56)])?;
+
+            let game_square_number = auction_info.squares_minted;
+            all_game_squares_list_info.game_square_number = game_square_number;
+            all_game_squares_list_info.team_number = game_square_number % 4;
+            all_game_squares_list_info.health_number = 100000000;
+            all_game_squares_list_info.mint_pubkey = *mint_account.key;
+
+            GameSquare::pack(all_game_squares_list_info, &mut all_game_squares_list_account.data.borrow_mut()[offset..(offset + 56)])?;
+
+            auction_info.squares_minted += 1;
+            AuctionInfo::pack(auction_info, &mut auction_info_account.data.borrow_mut())?;
+
+            // Get Update amount to 0 to
+            offset = (highest_bid_bid_number * 48) as usize;
             let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow()[offset..(offset + 48)])?;
 
-            if highest_bid_amount_lamports < auction_list_info.amount_lamports {
-                 highest_bid_amount_lamports = auction_list_info.amount_lamports;
-                 highest_bidder_pubkey = auction_list_info.bidder_pubkey;
-                 highest_bid_bid_number = auction_list_info.bid_number;
-            }
+            // Zero out lamports so no duplicates
+            msg!("Zeroing data");
+            auction_list_info.amount_lamports = 0;
+
+            msg!("Saving data");
+            BidEntry::pack(auction_list_info, &mut auction_list_account.data.borrow_mut()[offset..(offset + 48)])?;
+
+            msg!("Mint NFT successful");
         }
 
-        if highest_bidder_pubkey != *bid_entry_account.key {
-            msg!("Trying to MintNFT for account that is not the higest bidder");
-            return Err(ProgramError::InvalidAccountData);
-        }
-
-        let mint_instr = spl_token::instruction::initialize_mint(
-            &spl_token::ID,
-            mint_account.key,
-            mint_pda_account.key,
-            Option::Some(mint_pda_account.key),
-            0
-        )?;
-
-        let account_infos = &[
-            mint_account.clone(),
-            spl_token_program.clone(),
-            rent_account.clone(),
-            mint_pda_account.clone()
-        ];
-
-        invoke_signed(
-            &mint_instr,
-            account_infos,
-            &[],
-        )?;
-        msg!("InitMint successful");
-
-        let init_account_instr = spl_token::instruction::initialize_account(
-            &spl_token::ID,
-            token_account.key,
-            mint_account.key,
-            payer_account.key,
-        )?;
-
-        let init_account_account_infos = &[
-            token_account.clone(),
-            mint_account.clone(),
-            payer_account.clone(),
-            rent_account.clone()
-        ];
-
-        msg!("Initializing token account");
-
-        invoke_signed(
-            &init_account_instr,
-            init_account_account_infos,
-            &[],
-        )?;
-
-        let (mint_address, mint_bump_seed) = Pubkey::find_program_address(&[b"mint"], &program_id);
-
-        let mint_to_instr = spl_token::instruction::mint_to(
-            &spl_token::ID,
-            mint_account.key,
-            token_account.key,
-            mint_pda_account.key,
-            &[],
-            1,
-        )?;
-
-        let account_infos = &[
-            mint_account.clone(),
-            token_account.clone(),
-            spl_token_program.clone(),
-            mint_pda_account.clone()
-        ];
-
-        let mint_signer_seeds: &[&[_]] = &[
-            b"mint",
-            &[mint_bump_seed],
-        ];
-
-        msg!("Minting");
-
-        invoke_signed(
-            &mint_to_instr,
-            account_infos,
-            &[&mint_signer_seeds],
-        )?;
-
-        // Save a GameSquare into the all game squares list account
-        let mut offset = (auction_info.squares_minted * 56) as usize;
-        let mut all_game_squares_list_info = GameSquare::unpack_unchecked(&all_game_squares_list_account.data.borrow()[offset..(offset + 56)])?;
-
-        let game_square_number = auction_info.squares_minted;
-        all_game_squares_list_info.game_square_number = game_square_number;
-        all_game_squares_list_info.team_number = game_square_number % 4;
-        all_game_squares_list_info.health_number = 100000000;
-        all_game_squares_list_info.mint_pubkey = *mint_account.key;
-
-        GameSquare::pack(all_game_squares_list_info, &mut all_game_squares_list_account.data.borrow_mut()[offset..(offset + 56)])?;
-
-        auction_info.squares_minted += 1;
-        AuctionInfo::pack(auction_info, &mut auction_info_account.data.borrow_mut())?;
-
-        // Get Update amount to 0 to
-        offset = (highest_bid_bid_number * 48) as usize;
-        let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow()[offset..(offset + 48)])?;
-
-        // Zero out lamports so no duplicates
-        msg!("Zeroing data");
-        auction_list_info.amount_lamports = 0;
-
-        msg!("Saving data");
-        BidEntry::pack(auction_list_info, &mut auction_list_account.data.borrow_mut()[offset..(offset + 48)])?;
-
-        msg!("Mint NFT successful");
         Ok(())
     }
 

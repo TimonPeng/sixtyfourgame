@@ -176,12 +176,26 @@ export const AuctionView = () => {
                   auctionInfoPubkey,
                   sysvarClockPubKey,
                   splTokenProgramPubKey,
-                  allGameSquaresListPubkey
+                  allGameSquaresListPubkey,
+                  treasuryPubkey
               );
               setRefresh(1);
           })();
       }
-  }, [connected, bidAmount, wallet, connection, programId, auctionListPubkey, auctionInfoPubkey, sysvarClockPubKey, splTokenProgramPubKey, allGameSquaresListPubkey, rows]);
+  }, [
+    connected,
+    bidAmount,
+    wallet,
+    connection,
+    programId,
+    auctionListPubkey,
+    auctionInfoPubkey,
+    sysvarClockPubKey,
+    splTokenProgramPubKey,
+    allGameSquaresListPubkey,
+    rows,
+    treasuryPubkey
+  ]);
 
   const handleUpdateAuctionList = React.useCallback(() => {
       (async () => {

@@ -101,7 +101,8 @@ export const sendClaimSequence = async (
   auctionEndSlotPubkey: PublicKey,
   sysvarClockPubKey: PublicKey,
   splTokenProgramPubKey: PublicKey,
-  allGameSquaresListPubkey: PublicKey
+  allGameSquaresListPubkey: PublicKey,
+  treasuryPubkey: PublicKey,
 ) => {
 
     // Create new game fund account
@@ -152,7 +153,8 @@ export const sendClaimSequence = async (
                {pubkey: mint_pda, isSigner: false, isWritable: false},
                {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
                {pubkey: splTokenProgramPubKey, isSigner: false, isWritable: false},
-               {pubkey: allGameSquaresListPubkey, isSigner: false, isWritable: true}],
+               {pubkey: allGameSquaresListPubkey, isSigner: false, isWritable: true},
+               {pubkey: treasuryPubkey, isSigner: false, isWritable: true}],
         data: Buffer.from([3]),
         programId,
     });
