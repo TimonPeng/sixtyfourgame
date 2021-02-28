@@ -27,7 +27,7 @@ use thiserror::Error;
 use crate::{
     error::SixtyFourGameError,
     instruction::SixtyFourGameInstruction,
-    state::{BidEntry, AuctionInfo, GameSquare},
+    state::{BidEntry, AuctionInfo, GameSquare, ActivePlayer},
 };
 
 pub struct Processor;
@@ -337,11 +337,11 @@ impl Processor {
             auction_info.squares_minted += 1;
             AuctionInfo::pack(auction_info, &mut auction_info_account.data.borrow_mut())?;
 
-            // Get Update amount to 0 to
+            // Prevent second mint
             offset = (highest_bid_bid_number * 48) as usize;
             let mut auction_list_info = BidEntry::unpack_unchecked(&auction_list_account.data.borrow()[offset..(offset + 48)])?;
 
-            // Zero out lamports so no duplicates
+            // Zero out lamports so no 2nd mint
             msg!("Zeroing data");
             auction_list_info.amount_lamports = 0;
 
@@ -360,8 +360,95 @@ impl Processor {
         program_id: &Pubkey,
     ) -> ProgramResult {
 
-        msg!("Initiate play successful");
+        let accounts_iter = &mut accounts.iter();
+        // Set accounts
+        let payer_account = next_account_info(accounts_iter)?;
+        let game_square_token_account = next_account_info(accounts_iter)?;
+        let auction_info_account = next_account_info(accounts_iter)?;
+        let sysvar_account = next_account_info(accounts_iter)?;
+        let mint_account = next_account_info(accounts_iter)?;
+        let program_token_pda_account = next_account_info(accounts_iter)?;
+        let program_token_account = next_account_info(accounts_iter)?;
+        let rent_account = next_account_info(accounts_iter)?;
+        let spl_token_program = next_account_info(accounts_iter)?;
+        let active_players_list_account = next_account_info(accounts_iter)?;
+        let treasury_account = next_account_info(accounts_iter)?;
 
+        // Dont allow initiate play if before auction_info
+        let current_slot = Clock::from_account_info(sysvar_account)?.slot;
+        let mut auction_info = AuctionInfo::unpack_unchecked(&auction_info_account.data.borrow())?;
+        if !auction_info.auction_enabled ||
+            auction_info.auction_end_slot >= current_slot {
+            msg!("Auction is active, cannot initiate play");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+
+        // Confirm mint account is for the square given
+
+        // Confirm mint is in the gameSquareList
+
+
+        // Initialize program's token account
+        let init_account_instr = spl_token::instruction::initialize_account(
+            &spl_token::ID,
+            program_token_account.key,
+            mint_account.key,
+            program_token_pda_account.key,
+        )?;
+
+        let init_account_account_infos = &[
+            program_token_account.clone(),
+            mint_account.clone(),
+            program_token_pda_account.clone(),
+            rent_account.clone()
+        ];
+
+        msg!("Initializing token account");
+
+        invoke_signed(
+            &init_account_instr,
+            init_account_account_infos,
+            &[],
+        )?;
+
+        // Transfer NFT from owner to program
+        let transfer_instr = spl_token::instruction::transfer(
+            &spl_token::ID,
+            game_square_token_account.key,
+            program_token_account.key,
+            payer_account.key,
+            &[&payer_account.key],
+            1,
+        )?;
+
+        let transfer_instr_account_infos = &[
+            game_square_token_account.clone(),
+            program_token_account.clone(),
+            payer_account.clone(),
+            rent_account.clone()
+        ];
+
+        msg!("Transferring NFT to program");
+
+        invoke_signed(
+            &transfer_instr,
+            transfer_instr_account_infos,
+            &[],
+        )?;
+
+        // Save active player info - designated spot on list for each square
+        let offset = (square * 72) as usize;
+        let mut active_player_list_info = ActivePlayer::unpack_unchecked(&active_players_list_account.data.borrow()[offset..(offset + 72)])?;
+
+        active_player_list_info.game_square_number = square;
+        active_player_list_info.owner_pubkey = *payer_account.key; // owner must match
+        active_player_list_info.program_token_account_pubkey = *program_token_account.key;
+
+        // TODO: offset
+        ActivePlayer::pack(active_player_list_info, &mut active_players_list_account.data.borrow_mut()[offset..(offset + 72)])?;
+
+        msg!("Initiate Play / Deposit NFT successful");
         Ok(())
     }
 
@@ -371,8 +458,15 @@ impl Processor {
         program_id: &Pubkey,
     ) -> ProgramResult {
 
-        msg!("Bid successful");
 
+
+        // Transfer NFT from program to owner
+
+
+        // Remove ownerKey from Active Players
+
+
+        msg!("End Play / Withdraw NFT successful");
         Ok(())
     }
 
@@ -383,8 +477,27 @@ impl Processor {
         program_id: &Pubkey,
     ) -> ProgramResult {
 
-        msg!("Attack successful");
 
+        // Confirm attacker can attack defender square
+
+
+        // Confirm attacker is on a different team than defender
+
+
+        // Get the roll under value based on rank
+
+
+        // Get result of attack (hash blockhash, get rand value from 1-100)
+
+
+        // Check if health is going to go to 0, if so, update ActivePlayer ownerKey to
+        // attacker and change the team
+
+
+        // Decrease health of attacker or defender based on result
+
+
+        msg!("Attack successful");
         Ok(())
     }
 

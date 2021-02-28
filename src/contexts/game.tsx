@@ -165,6 +165,96 @@ export const sendClaimSequence = async (
     console.log('Claim transaction sent');
 };
 
+export const getGameSquareTokenAccount = async (
+  connection: any,
+  mint: any
+) => {
+    try {
+        const accounts = await connection.getTokenLargestAccounts(mint);
+        if (accounts) {
+            for(var i = 0;i<accounts.value.length;i++) {
+                if (accounts.value[i].amount == 1) {
+                    return accounts.value[i].address;
+                }
+            }
+        }
+    } catch (e) {
+        console.log(e);
+    }
+    return;
+};
+
+export const getAllTokenAccounts = async (
+  connection: any,
+  wallet: any,
+) => {
+    var tokenAccounts:any[] = new Array(0);
+    try {
+        const accounts = await connection.getParsedTokenAccountsByOwner(wallet.publicKey, {programId: TOKEN_PROGRAM_ID});
+        tokenAccounts = accounts.value;
+    } catch (e) {
+        console.log(e);
+    }
+    return tokenAccounts;
+};
+
+export const sendInitiatePlaySequence = async (
+  wallet: any,
+  gameSquareNumber: number,
+  connection: any,
+  programId: PublicKey,
+  gameSquareTokenAccountPubkey: PublicKey,
+  auctionInfoPubkey: PublicKey,
+  sysvarClockPubKey: PublicKey,
+  gameSquareMintPubkey: PublicKey,
+  splTokenProgramPubKey: PublicKey,
+  activePlayersListPubkey: PublicKey,
+  treasuryPubkey: PublicKey,
+) => {
+
+    // Create Token Account for program
+    let transaction = new Transaction();
+    let space = 165;
+    let lamports = await connection.getMinimumBalanceForRentExemption(space);
+    const programTokenAccount = new Account();
+    transaction.add(
+        SystemProgram.createAccount({
+            fromPubkey: wallet.publicKey,
+            newAccountPubkey: programTokenAccount.publicKey,
+            lamports,
+            space,
+            programId: TOKEN_PROGRAM_ID,
+        })
+    );
+
+    const [programTokenAccountPda, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from("initiate")],
+      programId,
+    );
+
+    // Create new initiate play transaction
+    const instruction = new TransactionInstruction({
+        keys: [{pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+               {pubkey: gameSquareTokenAccountPubkey, isSigner: false, isWritable: true},
+               {pubkey: auctionInfoPubkey, isSigner: false, isWritable: true},
+               {pubkey: sysvarClockPubKey, isSigner: false, isWritable: false},
+               {pubkey: gameSquareMintPubkey, isSigner: false, isWritable: true},
+               {pubkey: programTokenAccountPda, isSigner: false, isWritable: true},
+               {pubkey: programTokenAccount.publicKey, isSigner: true, isWritable: true},
+               {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+               {pubkey: splTokenProgramPubKey, isSigner: false, isWritable: false},
+               {pubkey: activePlayersListPubkey, isSigner: false, isWritable: true},
+               {pubkey: treasuryPubkey, isSigner: false, isWritable: true}],
+        data: Buffer.from([4, ...longToByteArray(gameSquareNumber)]),
+        programId,
+    });
+    transaction.add(instruction);
+
+    console.log('Sending Initiate Play transaction');
+    await sendTransaction(connection, wallet, programTokenAccount, null, transaction, true);
+    console.log('Initiate Play transaction sent');
+};
+
 const getAccountInfo = async (connection: Connection, pubKey: PublicKey) => {
   const info = await connection.getAccountInfo(pubKey, "recent");
   if (info === null) {
@@ -200,7 +290,7 @@ export const getGameSquares = async (
             if (mint_pubkey != "11111111111111111111111111111111") {
               var gameSquare =  {
                   id: game_square_number_int,
-                  is_active: false, // TODO
+                  is_active: game_square_number_int,
                   game_square_number: game_square_number_int,
                   team_number: team_number_int,
                   health_number: health_number_int,
@@ -213,6 +303,45 @@ export const getGameSquares = async (
         console.log(err);
     }
     return gameSquareList;
+};
+
+export const getActivePlayers = async (
+  connection: Connection,
+  activePlayersListPubkey: PublicKey,
+) => {
+
+    var MAX_SQUARES = 64;
+    var activePlayers:any[] = new Array(0);
+    try {
+        let info = await getAccountInfo(connection, activePlayersListPubkey);
+
+        for(var i = 0;i<MAX_SQUARES;i++) {
+
+            var offset = i * 72;
+
+            const game_square_number = info.data.slice(offset, offset + 7);
+            const game_square_number_int = byteArrayToLong(game_square_number);
+            const owner_pubkey_bytes = info.data.slice(offset + 8, offset + 40);
+            const owner_pubkey = new PublicKey(Buffer.from(owner_pubkey_bytes));
+            const owner_pubkey_str = owner_pubkey.toBase58();
+            const program_token_account_bytes = info.data.slice(offset + 41, offset + 73);
+            const program_token_account_pubkey = new PublicKey(Buffer.from(program_token_account_bytes));
+            const program_token_account_pubkey_str = program_token_account_pubkey.toBase58();
+
+            if (owner_pubkey_str != "11111111111111111111111111111111") {
+              var activePlayer =  {
+                  id: game_square_number_int,
+                  game_square_number: game_square_number_int,
+                  owner_pubkey: owner_pubkey_str,
+                  program_token_account_pubkey: program_token_account_pubkey_str,
+              }
+              activePlayers.push(activePlayer);
+            }
+        }
+    } catch (err) {
+        console.log(err);
+    }
+    return activePlayers;
 };
 
 export const getAuctionList = async (

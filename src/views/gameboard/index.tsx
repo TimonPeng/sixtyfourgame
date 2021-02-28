@@ -10,7 +10,18 @@ import { useWallet } from "../../contexts/wallet";
 import { useMarkets } from "../../contexts/market";
 import { formatNumber } from "../../utils/utils";
 import { DataGrid, ColDef, RowsProp, CellParams } from '@material-ui/data-grid';
-import { getAuctionList, getAuctionInfo, getCurrentSlot, sendClaimSequence, sendBidSequence, getGameSquares } from "../../contexts/game"
+import {
+  getAuctionList,
+  getAuctionInfo,
+  getGameSquareTokenAccount,
+  getCurrentSlot,
+  getGameSquares,
+  getActivePlayers,
+  sendBidSequence,
+  sendClaimSequence,
+  sendInitiatePlaySequence,
+  getAllTokenAccounts
+} from "../../contexts/game"
 import configData from "../../config.json";
 
 import {
@@ -24,6 +35,7 @@ let auctionListPubkey = new PublicKey(configData.auctionListPubkey);
 let allGameSquaresListPubkey = new PublicKey(configData.allGameSquaresListPubkey);
 let treasuryPubkey = new PublicKey(configData.treasuryPubkey);
 let auctionInfoPubkey = new PublicKey(configData.auctionInfoPubkey);
+let activePlayersListPubkey = new PublicKey(configData.activePlayersListPubkey);
 
 let splTokenProgramPubKey = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 let sysvarClockPubKey = new PublicKey('SysvarC1ock11111111111111111111111111111111');
@@ -56,6 +68,7 @@ export const GameBoardView = () => {
   };
   const [gameSquares , setGameSquares] = React.useState<GameSquare[]>([]);
   const [myGameSquares , setMyGameSquares] = React.useState<number[]>([]);
+  const [activeGameSquares , setActiveGameSquares] = React.useState<number[]>([]);
   const [rows, setRows] = React.useState([
       { id: 0, mint_pubkey: "There are no bids", is_active: "No", health_number: -1, team_number: -1, game_square_number: -1}
   ]);
@@ -64,11 +77,16 @@ export const GameBoardView = () => {
     {
       field: 'game_square_number',
       headerName: '#',
-      width: 60,
+      width: 110,
       headerClassName: 'text-white',
       renderCell: (params: CellParams) => (
-          <strong>
-              {params.value as number + 1}
+          <strong className="display-flex">
+              <p className="margin-top-3">{params.value as number + 1}</p>
+              {connected && myGameSquares.indexOf(params.value as number) != -1 ?
+                <form onSubmit={handleSubmitInitiatePlay}>
+                  <input className="display-none" type="number" name="game_square_number" value={params.value as number} />
+                  <input className="button" type="submit" value={activeGameSquares.indexOf(params.value as number) != -1 ? "Attack!" : "Activate"} />
+                </form> : <p></p> }
           </strong>
       ),
     },
@@ -79,7 +97,7 @@ export const GameBoardView = () => {
       headerClassName: 'text-white',
       renderCell: (params: CellParams) => (
           <strong>
-              {params.value ? "Yes" : "No"}
+              {activeGameSquares.indexOf(params.value as number) != -1 ? "Yes" : "No"}
           </strong>
       ),
     },
@@ -135,29 +153,110 @@ export const GameBoardView = () => {
 
   const handleUpdateGameSquares = React.useCallback(() => {
       (async () => {
+          // All
           var gameSquareData: any = await getGameSquares(
               connection,
               allGameSquaresListPubkey
           );
           setRows(gameSquareData);
+
+          // Active
+          var activePlayersData: any = await getActivePlayers(
+              connection,
+              activePlayersListPubkey
+          );
+          var _activeGameSquares: any[] = [];
+          activePlayersData.forEach(function(item: any) {
+              _activeGameSquares.push(item.game_square_number);
+          });
+          setActiveGameSquares(_activeGameSquares);
+
+          // Auction
           var auctionInfo: any = await getAuctionInfo(
               connection,
               auctionInfoPubkey
           );
           setSquaresMinted(auctionInfo.squares_minted);
           refreshTreasuryBalance();
+
+          // Get my squares
+          if (typeof wallet != "undefined" && wallet.publicKey != null) {
+              let accounts = await getAllTokenAccounts(connection, wallet);
+              var _myGameSquares: any[] = [];
+              for(var i = 0; i < accounts.length; i++) {
+                  for(var j = 0; j < gameSquareData.length; j++) {
+                      if (accounts[i].account.data.parsed.info.mint == gameSquareData[j].mint_pubkey) {
+                          _myGameSquares.push(gameSquareData[j].game_square_number);
+                      }
+                  }
+              };
+              setMyGameSquares(_myGameSquares);
+          }
       })();
   }, [
     connected,
     connection,
+    wallet,
     allGameSquaresListPubkey,
     auctionInfoPubkey
+  ]);
+
+  const handleSubmitInitiatePlay = React.useCallback((event) => {
+      event.preventDefault();
+      if (connected && wallet) {
+          (async () => {
+                // Get gamesquare mint
+                let gameSquareMintPubkeyStr = '';
+                let gameSquareNumber = event.target.elements.game_square_number.value;
+                rows.forEach(function(item) {
+                    if (item.game_square_number == gameSquareNumber) {
+                        gameSquareMintPubkeyStr = item.mint_pubkey;
+                    }
+                });
+                let gameSquareMintPubkey: PublicKey = new PublicKey(gameSquareMintPubkeyStr);
+                console.log('Game square #: ' + gameSquareNumber);
+                console.log('Game square mint: ' + gameSquareMintPubkeyStr);
+
+                // Get owner's token account
+                let gameSquareTokenAccountPubkey = await getGameSquareTokenAccount(connection, gameSquareMintPubkey);
+
+                console.log('Game square token account ' + gameSquareTokenAccountPubkey.toBase58());
+
+                await sendInitiatePlaySequence(
+                    wallet,
+                    gameSquareNumber,
+                    connection,
+                    programId,
+                    gameSquareTokenAccountPubkey,
+                    auctionInfoPubkey,
+                    sysvarClockPubKey,
+                    gameSquareMintPubkey,
+                    splTokenProgramPubKey,
+                    activePlayersListPubkey,
+                    treasuryPubkey
+                );
+
+          })();
+      }
+  }, [
+    connected,
+    wallet,
+    connection,
+    programId,
   ]);
 
   if(refresh) {
     setRefresh(0);
     handleUpdateGameSquares();
   }
+
+  useEffect(() => {
+    if (wallet && connected) {
+        setRefresh(1);
+
+
+    }
+  }, [wallet, connected, setRefresh]);
 
   return (
     <Row gutter={[16, 16]} align="middle">

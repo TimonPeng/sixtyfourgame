@@ -10,7 +10,6 @@ use crate::{
     error::SixtyFourGameError,
 };
 
-
 pub struct BidEntry {
     pub bid_number: u64,
     pub amount_lamports: u64,
@@ -31,15 +30,54 @@ pub struct GameSquare {
     pub mint_pubkey: Pubkey,
 }
 
+pub struct ActivePlayer {
+    pub game_square_number: u64,
+    pub owner_pubkey: Pubkey,
+    pub program_token_account_pubkey: Pubkey,
+}
+
 impl Sealed for BidEntry {}
 impl Sealed for AuctionInfo {}
 impl Sealed for GameSquare {}
+impl Sealed for ActivePlayer {}
 
-//
-// pub struct AuctionList {
-//     pub bid_entries: [BidEntry],
-// }
+impl Pack for ActivePlayer {
+    const LEN: usize = 72;
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
 
+        let src = array_ref![src, 0, ActivePlayer::LEN];
+        let (
+            game_square_number,
+            owner_pubkey,
+            program_token_account_pubkey,
+        ) = array_refs![src, 8, 32, 32];
+
+        Ok(ActivePlayer {
+            game_square_number: u64::from_le_bytes(*game_square_number),
+            owner_pubkey: Pubkey::new_from_array(*owner_pubkey),
+            program_token_account_pubkey: Pubkey::new_from_array(*program_token_account_pubkey),
+        })
+    }
+
+    fn pack_into_slice(&self, dst: &mut [u8]) {
+        let dst = array_mut_ref![dst, 0, ActivePlayer::LEN];
+        let (
+            game_square_number_dst,
+            owner_pubkey_dst,
+            program_token_account_pubkey_dst,
+        ) = mut_array_refs![dst, 8, 32, 32];
+
+        let ActivePlayer {
+            game_square_number,
+            owner_pubkey,
+            program_token_account_pubkey,
+        } = self;
+
+        *game_square_number_dst = game_square_number.to_le_bytes();
+        owner_pubkey_dst.copy_from_slice(owner_pubkey.as_ref());
+        program_token_account_pubkey_dst.copy_from_slice(program_token_account_pubkey.as_ref());
+    }
+}
 
 impl Pack for GameSquare {
     const LEN: usize = 56;
@@ -135,9 +173,6 @@ impl Pack for AuctionInfo {
 impl Pack for BidEntry {
     const LEN: usize = 48;
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        // let start = position * BidEntry::LEN;
-        // let end = start + BidEntry::LEN;
-        // let src = array_ref![src, start, end];
 
         let src = array_ref![src, 0, BidEntry::LEN];
         let (
