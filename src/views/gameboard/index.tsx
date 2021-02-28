@@ -23,11 +23,12 @@ import {
   getAllTokenAccounts
 } from "../../contexts/game"
 import configData from "../../config.json";
-
 import {
   Account,
   PublicKey
 } from '@solana/web3.js';
+
+import { Modal } from "antd";
 
 let programId = new PublicKey(configData.programId);
 let payerAccount = new Account(Buffer.from(configData.payerSecretKey, "base64"));
@@ -52,6 +53,25 @@ export const GameBoardView = () => {
 
   const [prize, setPrize] = React.useState(0);
   const [squaresMinted, setSquaresMinted] = React.useState(0);
+
+  // Attack Modal
+  const [isAttackModalVisible, setIsAttackModalVisible] = React.useState(false);
+  const openAttackModal = React.useCallback((e) => {
+    e.preventDefault()
+    setIsAttackModalVisible(true);
+  }, []);
+  const closeAttackModal = React.useCallback(() => setIsAttackModalVisible(false), []);
+  const [attackAmount, setAttackAmount] = React.useState(1);
+  const [defendingSquareNumber, setDefendingSquareNumber] = React.useState(1);
+
+  const refreshAttackAmount = React.useCallback((event) => {
+      event.preventDefault();
+      setAttackAmount(event.target.value);
+  }, []);
+  const refreshDefendingSquareNumber = React.useCallback((event) => {
+      event.preventDefault();
+      setDefendingSquareNumber(event.target.value);
+  }, []);
 
   const balance = useMemo(
     () => formatNumber.format((account?.lamports || 0) / LAMPORTS_PER_SOL),
@@ -83,7 +103,7 @@ export const GameBoardView = () => {
           <strong className="display-flex">
               <p className="margin-top-3">{params.value as number + 1}</p>
               {connected && myGameSquares.indexOf(params.value as number) != -1 ?
-                <form onSubmit={handleSubmitInitiatePlay}>
+                <form onSubmit={activeGameSquares.indexOf(params.value as number) != -1 ? openAttackModal : handleSubmitInitiatePlay}>
                   <input className="display-none" type="number" name="game_square_number" value={params.value as number} />
                   <input className="button" type="submit" value={activeGameSquares.indexOf(params.value as number) != -1 ? "Attack!" : "Activate"} />
                 </form> : <p></p> }
@@ -150,6 +170,16 @@ export const GameBoardView = () => {
       dispose();
     };
   }, [marketEmitter, midPriceInUSD, tokenMap]);
+
+  const handleSubmitAttack = React.useCallback((event) => {
+      event.preventDefault();
+      console.log('attacking');
+  }, [
+    connected,
+    wallet,
+    connection,
+    programId,
+  ]);
 
   const handleUpdateGameSquares = React.useCallback(() => {
       (async () => {
@@ -262,7 +292,7 @@ export const GameBoardView = () => {
     <Row gutter={[16, 16]} align="middle">
       <Col span={24}>
         <h2>GameBoard</h2>
-        <h3>Battle for The Prize, winners take all</h3>
+        <h3>Battle for The Prize, Winning Team Take All</h3>
         <h4>The Prize: {prize} SOL - GameSquares Minted: {squaresMinted}</h4>
       </Col>
 
@@ -280,6 +310,42 @@ export const GameBoardView = () => {
               ]}/>
           </div>
       </Col>
+      <Modal
+        title="Attack"
+        okText="Attack"
+        visible={isAttackModalVisible}
+        okButtonProps={{ style: { display: "none" } }}
+        onCancel={closeAttackModal}
+        width={400}
+      >
+          <form onSubmit={handleSubmitAttack}>
+            <div className="display-table-cell">
+                <label>
+                  Attack Amount (Health):
+                </label>
+                <input className="margin-top-3 text-black" type="number" name="attack_amount" value={attackAmount} onChange={refreshAttackAmount} />
+            </div>
+            <div className="display-table-cell">
+                <label>
+                  Defending Square Number:
+                </label>
+                <input className="margin-top-3 text-black" type="number" name="defending_square_number" value={defendingSquareNumber} onChange={refreshDefendingSquareNumber} />
+            </div>
+            <Button
+              size="large"
+              type="ghost"
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                marginTop: 20,
+                marginBottom: 8,
+              }}
+            >
+              ATTACK
+            </Button>
+          </form>
+      </Modal>
 
       <Col span={12}>
           <GameBoard

@@ -38,7 +38,7 @@ export const HomeView = () => {
         <h2>Welcome to 64</h2>
       </Col>
       <Col span={24}>
-        <h4>Battle for The Prize, winners take all</h4>
+        <h3>Battle for The Prize, Winning Team Take All</h3>
       </Col>
       <Col span={8}>
         <Link to="/auction">
