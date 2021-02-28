@@ -64,9 +64,9 @@ impl Processor {
                 msg!("SixtyFourGameInstruction: EndPlay");
                 Self::process_end_play(accounts, square, program_id)
             }
-            SixtyFourGameInstruction::Attack { fromSquare, toSquare } => {
+            SixtyFourGameInstruction::Attack { amount, fromSquare, toSquare } => {
                 msg!("SixtyFourGameInstruction: Attack");
-                Self::process_attack(accounts, fromSquare, toSquare, program_id)
+                Self::process_attack(accounts, amount, fromSquare, toSquare, program_id)
             }
         }
     }
@@ -472,14 +472,102 @@ impl Processor {
 
     pub fn process_attack(
         accounts: &[AccountInfo],
+        amount: u64,
         fromSquare: u64,
         toSquare: u64,
         program_id: &Pubkey,
     ) -> ProgramResult {
 
+        let accounts_iter = &mut accounts.iter();
+        // Set accounts
+        let attacker_owner_account = next_account_info(accounts_iter)?;
+        let game_square_token_account = next_account_info(accounts_iter)?;
+        let auction_info_account = next_account_info(accounts_iter)?;
+        let sysvar_account = next_account_info(accounts_iter)?;
+        let mint_account = next_account_info(accounts_iter)?;
+        let program_token_pda_account = next_account_info(accounts_iter)?;
+        let program_token_account = next_account_info(accounts_iter)?;
+        let rent_account = next_account_info(accounts_iter)?;
+        let spl_token_program = next_account_info(accounts_iter)?;
+        let active_players_list_account = next_account_info(accounts_iter)?;
+        let treasury_account = next_account_info(accounts_iter)?;
+
+        // Dont allow initiate play if before auction_info
+        let current_slot = Clock::from_account_info(sysvar_account)?.slot;
+        let mut auction_info = AuctionInfo::unpack_unchecked(&auction_info_account.data.borrow())?;
+        if !auction_info.auction_enabled ||
+            auction_info.auction_end_slot >= current_slot {
+            msg!("Auction is active, cannot initiate play");
+            return Err(ProgramError::InvalidAccountData);
+        }
 
         // Confirm attacker can attack defender square
-
+        let attackable = [
+            [2,4,6,8],
+            [1,3,9,11],
+            [2,4,12,14],
+            [1,3,5,15],
+            [4,6,16,18],
+            [1,5,7,19],
+            [6,8,20,22],
+            [1,7,9,23],
+            [2,8,10,24],
+            [9,11,25,27],
+            [2,10,12,28],
+            [3,11,13,29],
+            [12,14,30,32],
+            [3,13,15,33],
+            [4,14,16,34],
+            [5,15,17,35],
+            [16,18,36,38],
+            [5,17,19,39],
+            [6,18,20,40],
+            [7,19,21,41],
+            [20,22,42,44],
+            [7,21,23,45],
+            [8,22,24,46],
+            [9,23,25,47],
+            [10,24,26,48],
+            [25,27,49,51],
+            [10,26,28,52],
+            [11,27,29,53],
+            [12,28,30,54],
+            [13,29,31,55],
+            [32,30,56,58],
+            [13,31,33,59],
+            [14,32,34,60],
+            [15,33,35,61],
+            [16,34,36,62],
+            [17,35,37,63],
+            [36,38,64],
+            [17,37,39],
+            [18,38,40],
+            [19,39,41],
+            [20,40,42],
+            [21,41,43],
+            [42,44],
+            [21,43,45],
+            [22,44,46],
+            [23,45,47],
+            [24,46,48],
+            [25,47,49],
+            [26,48,50],
+            [49,51],
+            [26,50,52],
+            [27,51,53],
+            [28,52,54],
+            [29,53,55],
+            [30,54,56],
+            [31,55,57],
+            [56,58],
+            [31,57,59],
+            [32,58,60],
+            [33,59,61],
+            [34,60,62],
+            [35,61,63],
+            [36,62,64],
+            [37,63],
+        ];
 
         // Confirm attacker is on a different team than defender
 

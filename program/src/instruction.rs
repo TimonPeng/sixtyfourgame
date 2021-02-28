@@ -29,8 +29,9 @@ pub enum SixtyFourGameInstruction {
     EndPlay {
         square: u64,
     },
-    /// Attack - from/to squares - attacks neighboring square
+    /// Attack - amount and from/to squares - attacks neighboring square
     Attack {
+        amount: u64,
         fromSquare: u64,
         toSquare: u64,
     },
