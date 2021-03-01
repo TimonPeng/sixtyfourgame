@@ -20,7 +20,8 @@ import {
   sendBidSequence,
   sendClaimSequence,
   sendInitiatePlaySequence,
-  getAllTokenAccounts
+  getAllTokenAccounts,
+  sendAttackSequence
 } from "../../contexts/game"
 import configData from "../../config.json";
 import {
@@ -58,11 +59,16 @@ export const GameBoardView = () => {
   const [isAttackModalVisible, setIsAttackModalVisible] = React.useState(false);
   const openAttackModal = React.useCallback((e) => {
     e.preventDefault()
+    let attacker = e.target.elements.game_square_number.value;
+    setAttackFromGameSquare(attacker);
     setIsAttackModalVisible(true);
   }, []);
   const closeAttackModal = React.useCallback(() => setIsAttackModalVisible(false), []);
   const [attackAmount, setAttackAmount] = React.useState(1);
   const [defendingSquareNumber, setDefendingSquareNumber] = React.useState(1);
+
+
+  const [attackFromGameSquare, setAttackFromGameSquare] = React.useState(0);
 
   const refreshAttackAmount = React.useCallback((event) => {
       event.preventDefault();
@@ -89,6 +95,8 @@ export const GameBoardView = () => {
   const [gameSquares , setGameSquares] = React.useState<GameSquare[]>([]);
   const [myGameSquares , setMyGameSquares] = React.useState<number[]>([]);
   const [activeGameSquares , setActiveGameSquares] = React.useState<number[]>([]);
+  const [myActiveGameSquares , setMyActiveGameSquares] = React.useState<number[]>([]);
+
   const [rows, setRows] = React.useState([
       { id: 0, mint_pubkey: "There are no bids", is_active: "No", health_number: -1, team_number: -1, game_square_number: -1}
   ]);
@@ -105,7 +113,12 @@ export const GameBoardView = () => {
               {connected && myGameSquares.indexOf(params.value as number) != -1 ?
                 <form onSubmit={activeGameSquares.indexOf(params.value as number) != -1 ? openAttackModal : handleSubmitInitiatePlay}>
                   <input className="display-none" type="number" name="game_square_number" value={params.value as number} />
-                  <input className="button" type="submit" value={activeGameSquares.indexOf(params.value as number) != -1 ? "Attack!" : "Activate"} />
+                  <input className="button" type="submit" value="Activate" />
+                </form> : <p></p> }
+              {connected && myActiveGameSquares.indexOf(params.value as number) != -1 ?
+                <form onSubmit={activeGameSquares.indexOf(params.value as number) != -1 ? openAttackModal : handleSubmitInitiatePlay}>
+                  <input className="display-none" type="number" name="game_square_number" value={params.value as number} />
+                  <input className="button" type="submit" value="Attack!" />
                 </form> : <p></p> }
           </strong>
       ),
@@ -173,7 +186,31 @@ export const GameBoardView = () => {
 
   const handleSubmitAttack = React.useCallback((event) => {
       event.preventDefault();
-      console.log('attacking');
+      console.log(
+        'Attacking from ',
+        event.target.elements.attack_from_game_square.value,
+        ' to square ',
+        event.target.elements.defending_square_number.value
+      );
+      if (connected && wallet) {
+          (async () => {
+                await sendAttackSequence(
+                    wallet,
+                    event.target.elements.attack_amount.value,
+                    event.target.elements.attack_from_game_square.value,
+                    event.target.elements.defending_square_number.value,
+                    connection,
+                    programId,
+                    auctionInfoPubkey,
+                    sysvarClockPubKey,
+                    splTokenProgramPubKey,
+                    activePlayersListPubkey,
+                    allGameSquaresListPubkey,
+                    treasuryPubkey
+                );
+                setRefresh(1);
+          })();
+      }
   }, [
     connected,
     wallet,
@@ -196,10 +233,20 @@ export const GameBoardView = () => {
               activePlayersListPubkey
           );
           var _activeGameSquares: any[] = [];
-          activePlayersData.forEach(function(item: any) {
-              _activeGameSquares.push(item.game_square_number);
-          });
+          var _myActiveGameSquares: any[] = [];
+          for(var i = 0; i < activePlayersData.length; i++) {
+              if (typeof wallet != "undefined" && wallet.publicKey != null) {
+                  if (activePlayersData[i].owner_pubkey == wallet.publicKey.toBase58()) {
+                      _myActiveGameSquares.push(activePlayersData[i].game_square_number);
+                  }
+              }
+              _activeGameSquares.push(activePlayersData[i].game_square_number);
+          }
           setActiveGameSquares(_activeGameSquares);
+          setMyActiveGameSquares(_myActiveGameSquares);
+
+          console.log('MY ACTIVE SQUARES');
+          console.log(_myActiveGameSquares);
 
           // Auction
           var auctionInfo: any = await getAuctionInfo(
@@ -215,12 +262,15 @@ export const GameBoardView = () => {
               var _myGameSquares: any[] = [];
               for(var i = 0; i < accounts.length; i++) {
                   for(var j = 0; j < gameSquareData.length; j++) {
-                      if (accounts[i].account.data.parsed.info.mint == gameSquareData[j].mint_pubkey) {
+                      if (accounts[i].account.data.parsed.info.tokenAmount.amount == "1" &&
+                        accounts[i].account.data.parsed.info.mint == gameSquareData[j].mint_pubkey) {
                           _myGameSquares.push(gameSquareData[j].game_square_number);
                       }
                   }
               };
               setMyGameSquares(_myGameSquares);
+              console.log('MY INACTIVE SQUARES');
+              console.log(_myGameSquares);
           }
       })();
   }, [
@@ -265,7 +315,7 @@ export const GameBoardView = () => {
                     activePlayersListPubkey,
                     treasuryPubkey
                 );
-
+                setRefresh(1);
           })();
       }
   }, [
@@ -283,8 +333,6 @@ export const GameBoardView = () => {
   useEffect(() => {
     if (wallet && connected) {
         setRefresh(1);
-
-
     }
   }, [wallet, connected, setRefresh]);
 
@@ -311,7 +359,7 @@ export const GameBoardView = () => {
           </div>
       </Col>
       <Modal
-        title="Attack"
+        title="Battle"
         okText="Attack"
         visible={isAttackModalVisible}
         okButtonProps={{ style: { display: "none" } }}
@@ -319,6 +367,7 @@ export const GameBoardView = () => {
         width={400}
       >
           <form onSubmit={handleSubmitAttack}>
+            <input className="display-none" name="attack_from_game_square" value={attackFromGameSquare} />
             <div className="display-table-cell">
                 <label>
                   Attack Amount (Health):
@@ -331,25 +380,14 @@ export const GameBoardView = () => {
                 </label>
                 <input className="margin-top-3 text-black" type="number" name="defending_square_number" value={defendingSquareNumber} onChange={refreshDefendingSquareNumber} />
             </div>
-            <Button
-              size="large"
-              type="ghost"
-              style={{
-                display: "block",
-                width: "100%",
-                textAlign: "left",
-                marginTop: 20,
-                marginBottom: 8,
-              }}
-            >
-              ATTACK
-            </Button>
+            <input type="submit" className="attack-btn" value="ATTACK" />
           </form>
       </Modal>
 
       <Col span={12}>
           <GameBoard
-          gameSquares={rows}/>
+          gameSquares={rows}
+          activeGameSquares={activeGameSquares}/>
       </Col>
 
       <Col span={8}>

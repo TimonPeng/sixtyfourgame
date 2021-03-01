@@ -18,6 +18,7 @@ import React, { useContext, useEffect, useMemo } from "react";
 let TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 );
+let sysvarSlotHashesPubKey = new PublicKey('SysvarS1otHashes111111111111111111111111111');
 
 // TODO: move to util
 const longToByteArray = function(long: any) {
@@ -90,7 +91,6 @@ export const sendBidSequence = async (
     await sendTransaction(connection, wallet, treasuryFundAccount, null, transaction, true);
     console.log('Bid transaction sent');
 };
-
 
 export const sendClaimSequence = async (
   wallet: any,
@@ -253,6 +253,50 @@ export const sendInitiatePlaySequence = async (
     console.log('Sending Initiate Play transaction');
     await sendTransaction(connection, wallet, programTokenAccount, null, transaction, true);
     console.log('Initiate Play transaction sent');
+};
+
+
+export const sendAttackSequence = async (
+  wallet: any,
+  attackAmount: number,
+  attackGameSquareIndex: number,
+  defendGameSquareNumber: number,
+  connection: any,
+  programId: PublicKey,
+  auctionInfoPubkey: PublicKey,
+  sysvarClockPubKey: PublicKey,
+  splTokenProgramPubKey: PublicKey,
+  activePlayersListPubkey: PublicKey,
+  allGameSquaresListPubkey: PublicKey,
+  treasuryPubkey: PublicKey,
+) => {
+    // game square index = 0-63
+    // game square number = 1-64
+
+    // Create new initiate play transaction
+    let transaction = new Transaction();
+    const instruction = new TransactionInstruction({
+        keys: [{pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+               {pubkey: auctionInfoPubkey, isSigner: false, isWritable: true},
+               {pubkey: sysvarClockPubKey, isSigner: false, isWritable: false},
+               {pubkey: sysvarSlotHashesPubKey, isSigner: false, isWritable: false},
+               {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+               {pubkey: splTokenProgramPubKey, isSigner: false, isWritable: false},
+               {pubkey: activePlayersListPubkey, isSigner: false, isWritable: true},
+               {pubkey: allGameSquaresListPubkey, isSigner: false, isWritable: true},
+               {pubkey: treasuryPubkey, isSigner: false, isWritable: true}],
+        data: Buffer.from([
+            6, ...longToByteArray(attackAmount),
+            ...longToByteArray(attackGameSquareIndex),
+            ...longToByteArray(defendGameSquareNumber - 1)
+        ]),
+        programId,
+    });
+    transaction.add(instruction);
+
+    console.log('Sending Attack transaction');
+    await sendTransaction(connection, wallet, null, null, transaction, true);
+    console.log('Attack transaction sent');
 };
 
 const getAccountInfo = async (connection: Connection, pubKey: PublicKey) => {

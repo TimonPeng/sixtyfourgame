@@ -16,6 +16,7 @@ type GameSquare = {
 
 export const GameBoard = (props: {
   gameSquares: GameSquare[]
+  activeGameSquares: number[]
 }) => {
   const { wallet } = useWallet();
   const { account } = useNativeAccount();
@@ -29,6 +30,8 @@ export const GameBoard = (props: {
   const col7 = [49,26,27,28,29,30,31,58];
   const col8 = [50,51,52,53,54,55,56,57];
 
+  // TODO: CLEAN UP REPEATED CODE
+  
   return (
     <div className="gameboard-wrapper text-white display-inline-flex">
       <div className="gameboard-col">
@@ -45,7 +48,11 @@ export const GameBoard = (props: {
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
                     }
-                    var classes = "game-square text-white " + teamColor + "-bg";
+                    var bgClass = teamColor + "-bg";
+                    if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
+                        bgClass = teamColor + "-dark-bg";
+                    }
+                    var classes = "game-square text-white " + bgClass;
                     return <div className={classes}> {square.game_square_number + 1}</div>;
                 }
             });
@@ -65,7 +72,11 @@ export const GameBoard = (props: {
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
                     }
-                    var classes = "game-square text-white " + teamColor + "-bg";
+                    var bgClass = teamColor + "-bg";
+                    if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
+                        bgClass = teamColor + "-dark-bg";
+                    }
+                    var classes = "game-square text-white " + bgClass;
                     return <div className={classes}> {square.game_square_number + 1}</div>;
                 }
             });
@@ -85,7 +96,11 @@ export const GameBoard = (props: {
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
                     }
-                    var classes = "game-square text-white " + teamColor + "-bg";
+                    var bgClass = teamColor + "-bg";
+                    if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
+                        bgClass = teamColor + "-dark-bg";
+                    }
+                    var classes = "game-square text-white " + bgClass;
                     return <div className={classes}> {square.game_square_number + 1}</div>;
                 }
             });
@@ -105,7 +120,11 @@ export const GameBoard = (props: {
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
                     }
-                    var classes = "game-square text-white " + teamColor + "-bg";
+                    var bgClass = teamColor + "-bg";
+                    if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
+                        bgClass = teamColor + "-dark-bg";
+                    }
+                    var classes = "game-square text-white " + bgClass;
                     return <div className={classes}> {square.game_square_number + 1}</div>;
                 }
             });
@@ -125,7 +144,11 @@ export const GameBoard = (props: {
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
                     }
-                    var classes = "game-square text-white " + teamColor + "-bg";
+                    var bgClass = teamColor + "-bg";
+                    if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
+                        bgClass = teamColor + "-dark-bg";
+                    }
+                    var classes = "game-square text-white " + bgClass;
                     return <div className={classes}> {square.game_square_number + 1}</div>;
                 }
             });
@@ -145,7 +168,11 @@ export const GameBoard = (props: {
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
                     }
-                    var classes = "game-square text-white " + teamColor + "-bg";
+                    var bgClass = teamColor + "-bg";
+                    if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
+                        bgClass = teamColor + "-dark-bg";
+                    }
+                    var classes = "game-square text-white " + bgClass;
                     return <div className={classes}> {square.game_square_number + 1}</div>;
                 }
             });
@@ -165,7 +192,11 @@ export const GameBoard = (props: {
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
                     }
-                    var classes = "game-square text-white " + teamColor + "-bg";
+                    var bgClass = teamColor + "-bg";
+                    if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
+                        bgClass = teamColor + "-dark-bg";
+                    }
+                    var classes = "game-square text-white " + bgClass;
                     return <div className={classes}> {square.game_square_number + 1}</div>;
                 }
             });
@@ -185,7 +216,11 @@ export const GameBoard = (props: {
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
                     }
-                    var classes = "game-square text-white " + teamColor + "-bg";
+                    var bgClass = teamColor + "-bg";
+                    if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
+                        bgClass = teamColor + "-dark-bg";
+                    }
+                    var classes = "game-square text-white " + bgClass;
                     return <div className={classes}> {square.game_square_number + 1}</div>;
                 }
             });

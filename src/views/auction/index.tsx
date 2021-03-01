@@ -72,7 +72,7 @@ export const AuctionView = () => {
       headerClassName: 'text-white',
       renderCell: (params: CellParams) => (
           <strong>
-            { connected && myBidNumbers.indexOf(params.value as number) != -1 ?
+            { connected && !auctionActive ?
               <form onSubmit={handleSubmitClaim}>
                 <input className="display-none" type="number" name="bid_number" value={params.value as number} />
                 <input className="button" type="submit" value={auctionActive ? 'Cancel' : 'Resolve'} />
