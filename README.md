@@ -12,7 +12,7 @@ and the losing square now joins the attacking team
 - After square is transferred to new team, gets 3 lives restored
 - Once any team acquires all squares: ALL funds from auction are shared evenly across all owners of remaining squares
 
-[Sixty Four Game Board](64board.png?raw=true "Sixty Four Game Board")
+![Sixty Four Game Board](64board.png?raw=true "Sixty Four Game Board")
 
 # Auction
 Game board squares will be distributed in an auction, where the 64 highest bidders receive the NFT tokens. Higher ranking is more valuable, due to the game play advantage they have.
