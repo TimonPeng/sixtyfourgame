@@ -22,7 +22,7 @@ Game board squares will be distributed in an auction, where the 64 highest bidde
 ![Auction Resolve](AUCTION-RESOLVE.png?raw=true "Auction Resolve")
 
 # Game Play
-Players can battle neighboring squares. Each square has an associated rank/location on the game board. When one square attacks another, the program randomly determines a number: if the number returned is below a certain defeat-threshold, the defender player loses 1 life. If above the defeat-threshold, the attacker loses 1 life.
+Players can battle neighboring squares. Each square has an associated rank/location on the game board. When one square attacks another, the program randomly determines a number: if the number returned is below a certain defeat-threshold, the defender player's health decreases by the attack-amount. If above the defeat-threshold, the attacker's player's health decreases by the attack-amount.
 
 ![Game Board](GAMEBOARD-FRESH.png?raw=true "Gameboard")
 
