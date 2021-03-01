@@ -9,7 +9,7 @@
 and the losing square now joins the attacking team
 - If the attacker loses, vice versa^
 - Players get 100,000,000 'health' before NFT transfer, can attack with any amount
-- After square is transferred to new team, gets 3 lives restored
+- After square is transferred to new team, gets 100,000,000 'health' restored
 - Once any team acquires all squares: ALL funds from auction are shared evenly across all owners of remaining squares
 
 ![Sixty Four Game Board](64board.png?raw=true "Sixty Four Game Board")
