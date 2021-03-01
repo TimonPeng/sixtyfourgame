@@ -24,7 +24,7 @@ Game board squares will be distributed in an auction, where the 64 highest bidde
 # Game Play
 To begin gameplay, a player must deposit their NFT to the program to 'activate' attacking. A player can withdraw their NFT at any time as long as they are still the current owner. All gamesquare NFTs are not attackable unless 'active'.
 
-Players can battle neighboring squares (north, east, south, west only). Each square has an associated rank/location on the game board. When one square attacks another, the program randomly determines a number: if the number returned is below a certain defeat-threshold, the defender player's health decreases by the attack-amount. If above the defeat-threshold, the attacker's player's health decreases by the attack-amount.
+Players can battle neighboring squares (north, east, south, west only). Each square has an associated rank/location on the game board. When one square attacks another, the program randomly determines a number: if the number returned is below a certain defeat-threshold, the defender player's health decreases by the attack-amount. If above the defeat-threshold, the attacker player's health decreases by the attack-amount.
 
 ![Game Board](GAMEBOARD-FRESH.png?raw=true "Gameboard")
 
@@ -72,5 +72,32 @@ SFGInstruction::Attack(fromSquare, toSquare)
 - Attacks neighboring square
 - Can only be done by fromSquare owner
 - If a square loses all lives, transfer ownership of NFT to attacker
+
+```
+
+# Instructions
+
+```
+// CLIENT
+
+// install & start client
+npm install
+npm run start
+
+// PROGRAM
+
+// install program
+cd program/
+npm install
+
+// remove current config
+rm store/config.json
+mkdir store
+
+// rebuild program
+./do.sh build
+
+// deploy (to testnet)
+npm run start
 
 ```
