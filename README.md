@@ -36,6 +36,7 @@ GameSquares have different defeat-thresholds as follows:
 - #50-64 - 0% advantage - Rollunder number = 51
 
 ![Game Board](GAMEBOARD-FRESH.png?raw=true "Gameboard")
+![Attack](ATTACK.png?raw=true "Attack")
 
 # Goal
 Claim all squares of the game - 64 owners of the winning team are returned deposited SOL from auction.
