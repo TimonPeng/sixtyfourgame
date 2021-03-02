@@ -567,7 +567,7 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData);  // TODO
         }
 
-        // Set active player accounts
+        // Get active player accounts
         let fromOffsetActive = (from_square_index * 72) as usize;
         let mut attacker_active_player_info = ActivePlayer::unpack_unchecked(&active_players_list_account.data.borrow()[fromOffsetActive..(fromOffsetActive + 72)])?;
 
@@ -672,7 +672,7 @@ impl Processor {
         let mut blue = 0;  //1
         let mut green = 0;  //2
         let mut orange = 0;  //3
-        for i in 0..64 {
+        for i in 0..auction_info.squares_minted {
             let mut fromOffset = (i * 56) as usize;
             let mut square_info = GameSquare::unpack_unchecked(&all_game_squares_list_account.data.borrow()[fromOffset..(fromOffset + 56)])?;
             if square_info.team_number == 0 {
