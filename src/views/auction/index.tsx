@@ -327,6 +327,7 @@ export const AuctionView = () => {
           <h3>Auction Completed</h3>
           <h3>Claim your GameSquare NFT or return your funds</h3>
           <h3>by clicking the "Resolve" button in the table</h3>
+          <h4>(GameSquares 1-64 must be resolved IN ORDER)</h4>
         </Col>) : (
           <Col span={0}>
           </Col>
