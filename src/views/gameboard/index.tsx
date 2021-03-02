@@ -29,7 +29,8 @@ import {
   PublicKey
 } from '@solana/web3.js';
 
-import { Modal } from "antd";
+import { Modal, Select } from "antd";
+const { Option } = Select;
 
 let programId = new PublicKey(configData.programId);
 let payerAccount = new Account(Buffer.from(configData.payerSecretKey, "base64"));
@@ -41,6 +42,74 @@ let activePlayersListPubkey = new PublicKey(configData.activePlayersListPubkey);
 
 let splTokenProgramPubKey = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 let sysvarClockPubKey = new PublicKey('SysvarC1ock11111111111111111111111111111111');
+
+// hardcode for now
+let attackable = [
+    [2,4,6,8],
+    [1,3,9,11],
+    [2,4,12,14],
+    [1,3,5,15],
+    [4,6,16,18],
+    [1,5,7,19],
+    [6,8,20,22],
+    [1,7,9,23],
+    [2,8,10,24],
+    [9,11,25,27],
+    [2,10,12,28],
+    [3,11,13,29],
+    [12,14,30,32],
+    [3,13,15,33],
+    [4,14,16,34],
+    [5,15,17,35],
+    [16,18,36,38],
+    [5,17,19,39],
+    [6,18,20,40],
+    [7,19,21,41],
+    [20,22,42,44],
+    [7,21,23,45],
+    [8,22,24,46],
+    [9,23,25,47],
+    [10,24,26,48],
+    [25,27,49,51],
+    [10,26,28,52],
+    [11,27,29,53],
+    [12,28,30,54],
+    [13,29,31,55],
+    [32,30,56,58],
+    [13,31,33,59],
+    [14,32,34,60],
+    [15,33,35,61],
+    [16,34,36,62],
+    [17,35,37,63],
+    [36,38,64],
+    [17,37,39],
+    [18,38,40],
+    [19,39,41],
+    [20,40,42],
+    [21,41,43],
+    [42,44],
+    [21,43,45],
+    [22,44,46],
+    [23,45,47],
+    [24,46,48],
+    [25,47,49],
+    [26,48,50],
+    [49,51],
+    [26,50,52],
+    [27,51,53],
+    [28,52,54],
+    [29,53,55],
+    [30,54,56],
+    [31,55,57],
+    [56,58],
+    [31,57,59],
+    [32,58,60],
+    [33,59,61],
+    [34,60,62],
+    [35,61,63],
+    [36,62,64],
+    [37,63]
+];
 
 export const GameBoardView = () => {
 
@@ -55,20 +124,45 @@ export const GameBoardView = () => {
   const [prize, setPrize] = React.useState(0);
   const [squaresMinted, setSquaresMinted] = React.useState(0);
 
+  type GameSquare = {
+    id: number,
+    game_square_number: number,
+    is_active: boolean,
+    team_number: number,
+    health_number: number,
+    mint_pubkey: string,
+  };
+  const [gameSquares , setGameSquares] = React.useState<GameSquare[]>([]);
+  const [myGameSquares , setMyGameSquares] = React.useState<number[]>([]);
+  const [activeGameSquares , setActiveGameSquares] = React.useState<number[]>([]);
+  const [myActiveGameSquares , setMyActiveGameSquares] = React.useState<number[]>([]);
+  const [defenderOptions , setDefenderOptions] = React.useState<number[]>([]);
+
   // Attack Modal
   const [isAttackModalVisible, setIsAttackModalVisible] = React.useState(false);
   const openAttackModal = React.useCallback((e) => {
     e.preventDefault()
     let attacker = e.target.elements.game_square_number.value;
     setAttackFromGameSquare(attacker);
+    setAttackFromGameSquareNumber(parseInt(attacker as string) + 1);
+
+    let _options:any = [];
+    for(var i=0; i<attackable[attacker].length;i++) {
+        // Check if active
+        // TODO: check if on same team here
+        if (activeGameSquares.indexOf(attackable[attacker][i]-1) != -1) {
+            _options.push(attackable[attacker][i])
+        }
+    }
+    setDefenderOptions(_options);
     setIsAttackModalVisible(true);
-  }, []);
+  }, [activeGameSquares]);
   const closeAttackModal = React.useCallback(() => setIsAttackModalVisible(false), []);
   const [attackAmount, setAttackAmount] = React.useState(1);
   const [defendingSquareNumber, setDefendingSquareNumber] = React.useState(1);
 
-
   const [attackFromGameSquare, setAttackFromGameSquare] = React.useState(0);
+  const [attackFromGameSquareNumber, setAttackFromGameSquareNumber] = React.useState(0);
 
   const refreshAttackAmount = React.useCallback((event) => {
       event.preventDefault();
@@ -83,19 +177,6 @@ export const GameBoardView = () => {
     () => formatNumber.format((account?.lamports || 0) / LAMPORTS_PER_SOL),
     [account]
   );
-
-  type GameSquare = {
-    id: number,
-    game_square_number: number,
-    is_active: boolean,
-    team_number: number,
-    health_number: number,
-    mint_pubkey: string,
-  };
-  const [gameSquares , setGameSquares] = React.useState<GameSquare[]>([]);
-  const [myGameSquares , setMyGameSquares] = React.useState<number[]>([]);
-  const [activeGameSquares , setActiveGameSquares] = React.useState<number[]>([]);
-  const [myActiveGameSquares , setMyActiveGameSquares] = React.useState<number[]>([]);
 
   const [rows, setRows] = React.useState([
       { id: 0, mint_pubkey: "There are no bids", is_active: "No", health_number: -1, team_number: -1, game_square_number: -1}
@@ -168,6 +249,10 @@ export const GameBoardView = () => {
             console.log(err);
         }
       })();
+  }, []);
+
+  const onDefenderChange = React.useCallback((value) => {
+      setDefendingSquareNumber(value);
   }, []);
 
   useEffect(() => {
@@ -281,6 +366,16 @@ export const GameBoardView = () => {
     auctionInfoPubkey
   ]);
 
+  const options = defenderOptions.map((result, index) => {
+    return (
+      <Option value={result} label={result}>
+        <div className="demo-option-label-item">
+            {result}
+        </div>
+    </Option>
+    );
+  });
+
   const handleSubmitInitiatePlay = React.useCallback((event) => {
       event.preventDefault();
       if (connected && wallet) {
@@ -359,7 +454,7 @@ export const GameBoardView = () => {
           </div>
       </Col>
       <Modal
-        title="Battle"
+        title={"Battle from Square #" + attackFromGameSquareNumber}
         okText="Attack"
         visible={isAttackModalVisible}
         okButtonProps={{ style: { display: "none" } }}
@@ -378,7 +473,11 @@ export const GameBoardView = () => {
                 <label>
                   Defending Square Number:
                 </label>
-                <input className="margin-top-3 text-black" type="number" name="defending_square_number" value={defendingSquareNumber} onChange={refreshDefendingSquareNumber} />
+                <input className="display-none" type="number" name="defending_square_number" value={defendingSquareNumber} onChange={refreshDefendingSquareNumber} />
+
+                <Select defaultValue="Select Defender" style={{ width: "100%" }} onChange={onDefenderChange}>
+                    {options}
+                </Select>
             </div>
             <input type="submit" className="attack-btn" value="ATTACK" />
           </form>

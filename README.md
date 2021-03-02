@@ -1,5 +1,7 @@
 # Sixty Four Game
 
+SixtyFourGame is a global, on-chain game between 64 GameSquare NFT holders, distributed in an auction. Players belong to 1 of 4 teams and battle to win the pooled SOL from the auction ("The Prize"), winning team take all.
+
 [https://www.sixtyfourgame.com](https://www.sixtyfourgame.com)
 
 - Game board consists of 64 squares
