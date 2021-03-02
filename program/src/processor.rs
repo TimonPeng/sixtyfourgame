@@ -592,7 +592,8 @@ impl Processor {
         }
 
         // Get the roll under value TODO: based on rank
-        let roll_under_64 = 51;
+        let advantage_percent = 4;
+        let roll_under_64 = 51 + ((64 - attacker_info.game_square_number) * advantage_percent / 64) as u64;
 
         // Get result of attack (hash blockhash, get rand value from 1-100)
         let slot_hashes_data = sysvar_slot_history.try_borrow_data()?;

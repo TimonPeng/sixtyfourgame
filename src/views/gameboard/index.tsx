@@ -418,6 +418,7 @@ export const GameBoardView = () => {
     wallet,
     connection,
     programId,
+    rows
   ]);
 
   if(refresh) {
