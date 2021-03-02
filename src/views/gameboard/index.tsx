@@ -21,7 +21,8 @@ import {
   sendClaimSequence,
   sendInitiatePlaySequence,
   getAllTokenAccounts,
-  sendAttackSequence
+  sendAttackSequence,
+  sendEndPlaySequence
 } from "../../contexts/game"
 import configData from "../../config.json";
 import {
@@ -186,7 +187,7 @@ export const GameBoardView = () => {
     {
       field: 'game_square_number',
       headerName: '#',
-      width: 110,
+      width: 140,
       headerClassName: 'text-white',
       renderCell: (params: CellParams) => (
           <strong className="display-flex">
@@ -200,6 +201,11 @@ export const GameBoardView = () => {
                 <form onSubmit={activeGameSquares.indexOf(params.value as number) != -1 ? openAttackModal : handleSubmitInitiatePlay}>
                   <input className="display-none" type="number" name="game_square_number" value={params.value as number} />
                   <input className="button" type="submit" value="Attack!" />
+                </form> : <p></p> }
+              {connected && myActiveGameSquares.indexOf(params.value as number) != -1 ?
+                <form onSubmit={handleSubmitEndPlay}>
+                  <input className="display-none" type="number" name="game_square_number" value={params.value as number} />
+                  <input className="button" type="submit" value="Retreat!" />
                 </form> : <p></p> }
           </strong>
       ),
@@ -375,6 +381,51 @@ export const GameBoardView = () => {
     </Option>
     );
   });
+
+  const handleSubmitEndPlay = React.useCallback((event) => {
+      event.preventDefault();
+      if (connected && wallet && typeof wallet != "undefined" && wallet.publicKey != null) {
+          (async () => {
+                // Get gamesquare mint
+                let gameSquareMintPubkeyStr = '';
+                let gameSquareNumber = event.target.elements.game_square_number.value;
+                rows.forEach(function(item) {
+                    if (item.game_square_number == gameSquareNumber) {
+                        gameSquareMintPubkeyStr = item.mint_pubkey;
+                    }
+                });
+                let gameSquareMintPubkey: PublicKey = new PublicKey(gameSquareMintPubkeyStr);
+                console.log('Game square #: ' + gameSquareNumber);
+                console.log('Game square mint: ' + gameSquareMintPubkeyStr);
+
+                // Get owner's token account
+                let gameSquareTokenAccountPubkey = await getGameSquareTokenAccount(connection, gameSquareMintPubkey);
+
+                console.log('Game square token account ' + gameSquareTokenAccountPubkey.toBase58());
+
+                await sendEndPlaySequence(
+                    wallet,
+                    gameSquareNumber,
+                    connection,
+                    programId,
+                    gameSquareTokenAccountPubkey,
+                    auctionInfoPubkey,
+                    sysvarClockPubKey,
+                    gameSquareMintPubkey,
+                    splTokenProgramPubKey,
+                    activePlayersListPubkey,
+                    treasuryPubkey
+                );
+                setRefresh(1);
+          })();
+      }
+  }, [
+    connected,
+    wallet,
+    connection,
+    programId,
+    rows
+  ]);
 
   const handleSubmitInitiatePlay = React.useCallback((event) => {
       event.preventDefault();

@@ -255,6 +255,62 @@ export const sendInitiatePlaySequence = async (
     console.log('Initiate Play transaction sent');
 };
 
+export const sendEndPlaySequence = async (
+  wallet: any,
+  gameSquareNumber: number,
+  connection: any,
+  programId: PublicKey,
+  gameSquareTokenAccountPubkey: PublicKey,
+  auctionInfoPubkey: PublicKey,
+  sysvarClockPubKey: PublicKey,
+  gameSquareMintPubkey: PublicKey,
+  splTokenProgramPubKey: PublicKey,
+  activePlayersListPubkey: PublicKey,
+  treasuryPubkey: PublicKey,
+) => {
+
+    // Create Token Account for user
+    let transaction = new Transaction();
+    let space = 165;
+    let lamports = await connection.getMinimumBalanceForRentExemption(space);
+    const userTokenAccount = new Account();
+    transaction.add(
+        SystemProgram.createAccount({
+            fromPubkey: wallet.publicKey,
+            newAccountPubkey: userTokenAccount.publicKey,
+            lamports,
+            space,
+            programId: TOKEN_PROGRAM_ID,
+        })
+    );
+
+    const [programTokenAccountPda, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from("initiate")],
+      programId,
+    );
+
+    // Create new initiate play transaction
+    const instruction = new TransactionInstruction({
+        keys: [{pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+               {pubkey: userTokenAccount.publicKey, isSigner: false, isWritable: true},
+               {pubkey: gameSquareTokenAccountPubkey, isSigner: false, isWritable: true},
+               {pubkey: auctionInfoPubkey, isSigner: false, isWritable: true},
+               {pubkey: sysvarClockPubKey, isSigner: false, isWritable: false},
+               {pubkey: gameSquareMintPubkey, isSigner: false, isWritable: true},
+               {pubkey: programTokenAccountPda, isSigner: false, isWritable: true},
+               {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+               {pubkey: splTokenProgramPubKey, isSigner: false, isWritable: false},
+               {pubkey: activePlayersListPubkey, isSigner: false, isWritable: true},
+               {pubkey: treasuryPubkey, isSigner: false, isWritable: true}],
+        data: Buffer.from([5, ...longToByteArray(gameSquareNumber)]),
+        programId,
+    });
+    transaction.add(instruction);
+
+    console.log('Sending End Play transaction');
+    await sendTransaction(connection, wallet, userTokenAccount, null, transaction, true);
+    console.log('End Play transaction sent');
+};
 
 export const sendAttackSequence = async (
   wallet: any,

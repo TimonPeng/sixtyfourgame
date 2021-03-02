@@ -426,13 +426,90 @@ impl Processor {
         program_id: &Pubkey,
     ) -> ProgramResult {
 
+        let accounts_iter = &mut accounts.iter();
+        // Set accounts
+        let player_account = next_account_info(accounts_iter)?;
+        let user_game_square_token_account = next_account_info(accounts_iter)?;
+        let game_square_token_account = next_account_info(accounts_iter)?;
+        let auction_info_account = next_account_info(accounts_iter)?;
+        let sysvar_account = next_account_info(accounts_iter)?;
+        let mint_account = next_account_info(accounts_iter)?;
+        let program_token_pda_account = next_account_info(accounts_iter)?;
+        let rent_account = next_account_info(accounts_iter)?;
+        let spl_token_program = next_account_info(accounts_iter)?;
+        let active_players_list_account = next_account_info(accounts_iter)?;
+        let treasury_account = next_account_info(accounts_iter)?;
 
+        // Confirm player is signer
+        if !player_account.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        // Dont allow end play if before auction_info
+        let current_slot = Clock::from_account_info(sysvar_account)?.slot;
+        let mut auction_info = AuctionInfo::unpack_unchecked(&auction_info_account.data.borrow())?;
+        if !auction_info.auction_enabled ||
+            auction_info.auction_end_slot >= current_slot {
+            msg!("Auction is active, cannot initiate play");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        // Initialize users's token account
+        let init_account_instr = spl_token::instruction::initialize_account(
+            &spl_token::ID,
+            user_game_square_token_account.key,
+            mint_account.key,
+            player_account.key,
+        )?;
+        let init_account_account_infos = &[
+            user_game_square_token_account.clone(),
+            mint_account.clone(),
+            player_account.clone(),
+            rent_account.clone()
+        ];
+        invoke_signed(
+            &init_account_instr,
+            init_account_account_infos,
+            &[],
+        )?;
 
         // Transfer NFT from program to owner
+        let (_address, _bump_seed) = Pubkey::find_program_address(&[b"initiate"], &program_id);
+        let transfer_instr = spl_token::instruction::transfer(
+            &spl_token::ID,
+            game_square_token_account.key,
+            user_game_square_token_account.key,
+            program_token_pda_account.key,
+            &[&program_token_pda_account.key],
+            1,
+        )?;
+        let transfer_instr_account_infos = &[
+            game_square_token_account.clone(),
+            user_game_square_token_account.clone(),
+            program_token_pda_account.clone(),
+            rent_account.clone()
+        ];
 
+        let signer_seeds: &[&[_]] = &[
+            b"initiate",
+            &[_bump_seed],
+        ];
+
+        invoke_signed(
+            &transfer_instr,
+            transfer_instr_account_infos,
+            &[&signer_seeds],
+        )?;
 
         // Remove ownerKey from Active Players
+        let fromOffsetActive = (square * 72) as usize;
+        let mut attacker_active_player_info = ActivePlayer::unpack_unchecked(&active_players_list_account.data.borrow()[fromOffsetActive..(fromOffsetActive + 72)])?;
 
+        // Placeholders for now...
+        attacker_active_player_info.game_square_number = 999;
+        attacker_active_player_info.owner_pubkey = spl_token::ID;
+        
+        ActivePlayer::pack(attacker_active_player_info, &mut active_players_list_account.data.borrow_mut()[fromOffsetActive..(fromOffsetActive + 72)])?;
 
         msg!("End Play / Withdraw NFT successful");
         Ok(())
