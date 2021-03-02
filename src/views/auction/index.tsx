@@ -75,7 +75,7 @@ export const AuctionView = () => {
             { connected && !auctionActive ?
               <form onSubmit={handleSubmitClaim}>
                 <input className="display-none" type="number" name="bid_number" value={params.value as number} />
-                <input className="button" type="submit" value={auctionActive ? 'Cancel' : 'Resolve'} />
+                <input className="button" type="submit" value={auctionActive ? '' : 'Resolve'} />
               </form> : <p></p> }
           </strong>
       ),
