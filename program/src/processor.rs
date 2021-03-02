@@ -593,7 +593,7 @@ impl Processor {
 
         // Get the roll under value TODO: based on rank
         let advantage_percent = 4;
-        let roll_under_64 = 51 + ((64 - attacker_info.game_square_number) * advantage_percent / 64) as u64;
+        let roll_under_64 = 51 + ((auction_info.squares_minted - attacker_info.game_square_number) * advantage_percent / auction_info.squares_minted) as u64;
 
         // Get result of attack (hash blockhash, get rand value from 1-100)
         let slot_hashes_data = sysvar_slot_history.try_borrow_data()?;
@@ -666,6 +666,57 @@ impl Processor {
 
         GameSquare::pack(attacker_info, &mut all_game_squares_list_account.data.borrow_mut()[fromOffset..(fromOffset + 56)])?;
         GameSquare::pack(defender_info, &mut all_game_squares_list_account.data.borrow_mut()[toOffset..(toOffset + 56)])?;
+
+        // Check for winner
+        let mut red = 0;  //0
+        let mut blue = 0;  //1
+        let mut green = 0;  //2
+        let mut orange = 0;  //3
+        for i in 0..64 {
+            let mut fromOffset = (i * 56) as usize;
+            let mut square_info = GameSquare::unpack_unchecked(&all_game_squares_list_account.data.borrow()[fromOffset..(fromOffset + 56)])?;
+            if square_info.team_number == 0 {
+                red += 1;
+            }
+            if square_info.team_number == 1 {
+                blue += 1;
+            }
+            if square_info.team_number == 2 {
+                green += 1;
+            }
+            if square_info.team_number == 3 {
+                orange += 1;
+            }
+        }
+
+        if red == auction_info.squares_minted ||
+           blue == auction_info.squares_minted ||
+           green == auction_info.squares_minted ||
+           orange == auction_info.squares_minted {
+
+            msg!("Game over!");
+
+            // Payout funds TODO: need to pay active players and find nft owners if not active
+            // for i in 0..64 {
+            //     let mut fromOffset = (i * 56) as usize;
+            //     let mut active_player_info = ActivePlayer::unpack_unchecked(&all_game_squares_list_account.data.borrow()[fromOffset..(fromOffset + 56)])?;
+            //
+            //     let payout_account = AccountInfo::new(
+            //         active_player_info.owner_pukey,
+            //         false,
+            //         true,
+            //         &mut lamports,
+            //         &mut data,
+            //         &owner,
+            //         false,
+            //         Epoch::default(),
+            //     );
+            //
+            //     let amount = (treasury_account.lamports / 64) as u64;
+            //     **treasury_account.lamports.borrow_mut() -= amount;
+            //     **payout_account.lamports.borrow_mut() += amount;
+            // }
+        }
 
         msg!("Attack successful");
         Ok(())
