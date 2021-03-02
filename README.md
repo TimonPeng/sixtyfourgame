@@ -26,7 +26,14 @@ Game board squares will be distributed in an auction, where the 64 highest bidde
 # Game Play
 To begin gameplay, a player must deposit their NFT to the program to 'activate' attacking. A player can withdraw their NFT at any time as long as they are still the current owner. All gamesquare NFTs are not attackable unless 'active'.
 
-Players can battle neighboring squares (north, east, south, west only). Each square has an associated rank/location on the game board. When one square attacks another, the program randomly determines a number: if the number returned is below a certain defeat-threshold, the defender player's health decreases by the attack-amount. If above the defeat-threshold, the attacker player's health decreases by the attack-amount.
+Players can battle neighboring squares (north, east, south, west only). Each square has an associated rank/location on the game board. When one square attacks another, the program randomly determines a number from 1 to 100: if the number returned is below a certain defeat-threshold, the defender player's health decreases by the attack-amount. If above the defeat-threshold, the attacker player's health decreases by the attack-amount.
+
+GameSquares have different defeat-thresholds as follows:
+- #1 - 4% advantage - Rollunder number = 55
+- #2-18 - 3% advantage - Rollunder number = 54
+- #19-33 - 2% advantage - Rollunder number = 53
+- #34-49 - 1% advantage - Rollunder number = 52
+- #50-64 - 0% advantage - Rollunder number = 51
 
 ![Game Board](GAMEBOARD-FRESH.png?raw=true "Gameboard")
 
