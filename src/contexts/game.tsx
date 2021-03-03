@@ -14,6 +14,7 @@ import {
 } from "@solana/web3.js";
 import {AccountLayout, u64, MintInfo, MintLayout, Token} from "@solana/spl-token";
 import React, { useContext, useEffect, useMemo } from "react";
+import { notify } from "../utils/notifications";
 
 let TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
@@ -90,6 +91,11 @@ export const sendBidSequence = async (
     console.log('Sending Bid transaction');
     await sendTransaction(connection, wallet, treasuryFundAccount, null, transaction, true);
     console.log('Bid transaction sent');
+
+    notify({
+      message: "Bid transaction sent",
+      type: "success",
+    });
 };
 
 export const sendClaimSequence = async (
@@ -163,6 +169,11 @@ export const sendClaimSequence = async (
     console.log('Sending Claim transaction');
     await sendTransaction(connection, wallet, mintAccount, tokenAccount, transaction, true);
     console.log('Claim transaction sent');
+
+    notify({
+      message: "Resolve transaction sent",
+      type: "success",
+    });
 };
 
 export const getGameSquareTokenAccount = async (
@@ -253,6 +264,11 @@ export const sendInitiatePlaySequence = async (
     console.log('Sending Initiate Play transaction');
     await sendTransaction(connection, wallet, programTokenAccount, null, transaction, true);
     console.log('Initiate Play transaction sent');
+
+    notify({
+      message: "Activate transaction sent",
+      type: "success",
+    });
 };
 
 export const sendEndPlaySequence = async (
@@ -310,6 +326,11 @@ export const sendEndPlaySequence = async (
     console.log('Sending End Play transaction');
     await sendTransaction(connection, wallet, userTokenAccount, null, transaction, true);
     console.log('End Play transaction sent');
+
+    notify({
+      message: "Retreat transaction sent",
+      type: "success",
+    });
 };
 
 export const sendAttackSequence = async (
@@ -353,6 +374,11 @@ export const sendAttackSequence = async (
     console.log('Sending Attack transaction');
     await sendTransaction(connection, wallet, null, null, transaction, true);
     console.log('Attack transaction sent');
+
+    notify({
+      message: "Attack transaction sent",
+      type: "success",
+    });
 };
 
 const getAccountInfo = async (connection: Connection, pubKey: PublicKey) => {

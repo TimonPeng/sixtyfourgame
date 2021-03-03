@@ -433,7 +433,7 @@ export async function loadProgram(): Promise<void> {
   // Set Auction end slot
   let epochInfo = await connection.getEpochInfo();
   let lastSlot = epochInfo.absoluteSlot;
-  let auctionEndMinutes = 0.25;
+  let auctionEndMinutes = 10;
   let blocktime = 0.4;
   let auctionEndSlot = lastSlot + Math.ceil(auctionEndMinutes * 60 / blocktime);
 

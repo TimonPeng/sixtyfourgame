@@ -61,10 +61,21 @@ export const AuctionView = () => {
   const [myBids , setMyBids] = React.useState<Bid[]>([]);
   const [myBidNumbers , setMyBidNumbers] = React.useState<number[]>([]);
   const [rows, setRows] = React.useState([
-      { id: 0, bidder: "There are no bids", bid_number: -1, bidder_pubkey: ''}
+      { id: 0, bidder: "There are no bids", bid_number: -1, bidder_pubkey: '', amount: 0, rank: 1}
   ]);
 
   const columns: ColDef[] = [
+    {
+      field: 'rank',
+      headerName: 'Rank',
+      width: 90,
+      headerClassName: 'text-white',
+      renderCell: (params: CellParams) => (
+          <strong className={params.value as number <= (64 - squaresMinted) ? "text-green" : "text-red"}>
+              {params.value}
+          </strong>
+      ),
+    },
     {
       field: 'bid_number',
       headerName: 'Action',
@@ -268,6 +279,12 @@ export const AuctionView = () => {
     handleUpdateAuctionList();
   }
 
+
+  const results = rows.sort((a, b) => a.amount < b.amount ? 1:-1).map((result, index) => {
+    result.rank = index + 1;
+    return result;
+  });
+
   useEffect(() => {
     if (wallet && connected) {
       setRefresh(1);
@@ -292,7 +309,7 @@ export const AuctionView = () => {
           <h3>Highest Bidders</h3>
           <div style={{ color: 'white', height: 500, width: '100%' }}>
             <DataGrid
-                rows={rows}
+                rows={results}
                 columns={columns}
                 sortModel={[
                     {
@@ -327,7 +344,9 @@ export const AuctionView = () => {
           <h3>Auction Completed</h3>
           <h3>Claim your GameSquare NFT or return your funds</h3>
           <h3>by clicking the "Resolve" button in the table</h3>
+          <br></br>
           <h4>(GameSquares 1-64 must be resolved IN ORDER)</h4>
+          <h4>(Tie goes to whoever clicked 'Resolve' first)</h4>
         </Col>) : (
           <Col span={0}>
           </Col>
