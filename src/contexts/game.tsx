@@ -89,12 +89,13 @@ export const sendBidSequence = async (
     transaction.add(instruction);
 
     console.log('Sending Bid transaction');
-    await sendTransaction(connection, wallet, treasuryFundAccount, null, transaction, true);
+    let txid = await sendTransaction(connection, wallet, treasuryFundAccount, null, transaction, true);
     console.log('Bid transaction sent');
 
     notify({
       message: "Bid transaction sent",
       type: "success",
+      txid: txid
     });
 };
 
@@ -167,12 +168,13 @@ export const sendClaimSequence = async (
     transaction.add(instruction);
 
     console.log('Sending Claim transaction');
-    await sendTransaction(connection, wallet, mintAccount, tokenAccount, transaction, true);
+    let txid = await sendTransaction(connection, wallet, mintAccount, tokenAccount, transaction, true);
     console.log('Claim transaction sent');
 
     notify({
       message: "Resolve transaction sent",
       type: "success",
+      txid: txid
     });
 };
 
@@ -262,12 +264,13 @@ export const sendInitiatePlaySequence = async (
     transaction.add(instruction);
 
     console.log('Sending Initiate Play transaction');
-    await sendTransaction(connection, wallet, programTokenAccount, null, transaction, true);
+    let txid = await sendTransaction(connection, wallet, programTokenAccount, null, transaction, true);
     console.log('Initiate Play transaction sent');
 
     notify({
       message: "Activate transaction sent",
       type: "success",
+      txid: txid
     });
 };
 
@@ -324,12 +327,13 @@ export const sendEndPlaySequence = async (
     transaction.add(instruction);
 
     console.log('Sending End Play transaction');
-    await sendTransaction(connection, wallet, userTokenAccount, null, transaction, true);
+    let txid = await sendTransaction(connection, wallet, userTokenAccount, null, transaction, true);
     console.log('End Play transaction sent');
 
     notify({
       message: "Retreat transaction sent",
       type: "success",
+      txid: txid
     });
 };
 
@@ -372,12 +376,13 @@ export const sendAttackSequence = async (
     transaction.add(instruction);
 
     console.log('Sending Attack transaction');
-    await sendTransaction(connection, wallet, null, null, transaction, true);
+    let txid = await sendTransaction(connection, wallet, null, null, transaction, true);
     console.log('Attack transaction sent');
 
     notify({
       message: "Attack transaction sent",
       type: "success",
+      txid: txid
     });
 };
 
