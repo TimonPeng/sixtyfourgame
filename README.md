@@ -17,7 +17,7 @@ and the losing square now joins the attacking team
 ![Sixty Four Game Board](64board.png?raw=true "Sixty Four Game Board")
 
 # Auction
-Game board squares will be distributed in an auction, where the 64 highest bidders receive the NFT tokens. Higher ranking is more valuable, due to the game play advantage they have. If you did not receive one of 64 NFTs, you will receive your bid SOL amount back on resolve.
+Game board squares will be distributed in an auction, where the 64 highest bidders receive the NFT tokens. Higher ranking is more valuable, due to the game play advantage they have. If you did not receive one of 64 NFTs, you will receive your bid SOL amount back on resolve. GameSquares 1 to 64 must be resolved in order and a tie bid amount goes to whoever submitted their bid first.
 
 ![Auction](AUCTION.png?raw=true "Sixty Four Game Board")
 

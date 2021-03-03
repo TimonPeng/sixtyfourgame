@@ -346,7 +346,7 @@ export const AuctionView = () => {
           <h3>by clicking the "Resolve" button in the table</h3>
           <br></br>
           <h4>(GameSquares 1-64 must be resolved IN ORDER)</h4>
-          <h4>(Tie goes to whoever clicked 'Resolve' first)</h4>
+          <h4>(Tie goes to whoever submitted their bid first)</h4>
         </Col>) : (
           <Col span={0}>
           </Col>
