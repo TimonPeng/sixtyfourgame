@@ -22,7 +22,8 @@ import {
   sendInitiatePlaySequence,
   getAllTokenAccounts,
   sendAttackSequence,
-  sendEndPlaySequence
+  sendEndPlaySequence,
+  sendClaimPrizeSequence
 } from "../../contexts/game"
 import configData from "../../config.json";
 import {
@@ -34,7 +35,6 @@ import { Modal, Select } from "antd";
 const { Option } = Select;
 
 let programId = new PublicKey(configData.programId);
-let payerAccount = new Account(Buffer.from(configData.payerSecretKey, "base64"));
 let auctionListPubkey = new PublicKey(configData.auctionListPubkey);
 let allGameSquaresListPubkey = new PublicKey(configData.allGameSquaresListPubkey);
 let treasuryPubkey = new PublicKey(configData.treasuryPubkey);
@@ -122,6 +122,7 @@ export const GameBoardView = () => {
   const { tokenMap } = useConnectionConfig();
   const { account } = useNativeAccount();
 
+  const [gameOver, setGameOver] = React.useState(false);
   const [prize, setPrize] = React.useState(0);
   const [squaresMinted, setSquaresMinted] = React.useState(0);
 
@@ -197,15 +198,20 @@ export const GameBoardView = () => {
                   <input className="display-none" type="number" name="game_square_number" value={params.value as number} />
                   <input className="button" type="submit" value="Activate" />
                 </form> : <p></p> }
-              {connected && myActiveGameSquares.indexOf(params.value as number) != -1 ?
+              {connected && !gameOver && myActiveGameSquares.indexOf(params.value as number) != -1 ?
                 <form onSubmit={activeGameSquares.indexOf(params.value as number) != -1 ? openAttackModal : handleSubmitInitiatePlay}>
                   <input className="display-none" type="number" name="game_square_number" value={params.value as number} />
                   <input className="button" type="submit" value="Attack!" />
                 </form> : <p></p> }
-              {connected && myActiveGameSquares.indexOf(params.value as number) != -1 ?
+              {connected && !gameOver && myActiveGameSquares.indexOf(params.value as number) != -1 ?
                 <form onSubmit={handleSubmitEndPlay}>
                   <input className="display-none" type="number" name="game_square_number" value={params.value as number} />
                   <input className="button" type="submit" value="Retreat!" />
+                </form> : <p></p> }
+              {connected && gameOver && myActiveGameSquares.indexOf(params.value as number) != -1 ?
+                <form onSubmit={handleSubmitClaimPrize}>
+                  <input className="display-none" type="number" name="game_square_number" value={params.value as number} />
+                  <input className="button" type="submit" value="Claim Prize!" />
                 </form> : <p></p> }
           </strong>
       ),
@@ -224,7 +230,7 @@ export const GameBoardView = () => {
     {
       field: 'team_number',
       headerName: 'Team',
-      width: 100,
+      width: 110,
       headerClassName: 'text-white',
       renderCell: (params: CellParams) => (
           <strong>
@@ -236,6 +242,10 @@ export const GameBoardView = () => {
                   <div className="text-green">GREEN</div> : ""}
               {params.value == "3" ?
                   <div className="text-orange">ORANGE</div> : ""}
+              {params.value == "99" ?
+                  <div className="text-white">GAME OVER</div> : ""}
+              {params.value == "100" ?
+                  <div className="text-white">CLAIMED</div> : ""}
           </strong>
       ),
     },
@@ -274,6 +284,52 @@ export const GameBoardView = () => {
       dispose();
     };
   }, [marketEmitter, midPriceInUSD, tokenMap]);
+
+  const handleSubmitClaimPrize = React.useCallback((event) => {
+      event.preventDefault();
+      let claimSquareNumber = event.target.elements.game_square_number.value;
+      console.log('Claiming prize for square index ', claimSquareNumber);
+
+      if (connected && wallet) {
+          (async () => {
+
+                var activePlayersData: any = await getActivePlayers(
+                    connection,
+                    activePlayersListPubkey
+                );
+                var winningPubkey: PublicKey = new PublicKey('11111111111111111111111111111111');
+                for(var i = 0; i < activePlayersData.length; i++) {
+                    if (activePlayersData[i].game_square_number == claimSquareNumber) {
+                        winningPubkey = new PublicKey(activePlayersData[i].owner_pubkey);
+                        break;
+                    }
+                }
+
+                if (winningPubkey.toBase58() != "11111111111111111111111111111111"){
+                    await sendClaimPrizeSequence(
+                        wallet,
+                        claimSquareNumber,
+                        connection,
+                        programId,
+                        winningPubkey,
+                        auctionInfoPubkey,
+                        sysvarClockPubKey,
+                        splTokenProgramPubKey,
+                        activePlayersListPubkey,
+                        allGameSquaresListPubkey,
+                        treasuryPubkey
+                    );
+                    setRefresh(1);
+                }
+          })();
+      }
+  }, [
+    connected,
+    wallet,
+    connection,
+    programId,
+    activePlayersListPubkey
+  ]);
 
   const handleSubmitAttack = React.useCallback((event) => {
       event.preventDefault();
@@ -317,6 +373,12 @@ export const GameBoardView = () => {
               allGameSquaresListPubkey
           );
           setRows(gameSquareData);
+          for(var i=0; i<gameSquareData.length;i++) {
+              if (gameSquareData[i].team_number == 99) {
+                  setGameOver(true);
+                  break;
+              }
+          }
 
           // Active
           var activePlayersData: any = await getActivePlayers(

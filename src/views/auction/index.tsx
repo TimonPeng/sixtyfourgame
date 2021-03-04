@@ -20,14 +20,12 @@ import {
 
 
 let programId = new PublicKey(configData.programId);
-let payerAccount = new Account(Buffer.from(configData.payerSecretKey, "base64"));
 let auctionListPubkey = new PublicKey(configData.auctionListPubkey);
 let allGameSquaresListPubkey = new PublicKey(configData.allGameSquaresListPubkey);
 let treasuryPubkey = new PublicKey(configData.treasuryPubkey);
 let auctionInfoPubkey = new PublicKey(configData.auctionInfoPubkey);
 
 console.log('programId ', programId);
-console.log('configData.payerSecretKey ', configData.payerSecretKey);
 console.log('auctionListPubkey ', auctionListPubkey.toBase58());
 console.log('allGameSquaresListPubkey ', allGameSquaresListPubkey.toBase58());
 console.log('treasuryPubkey ', treasuryPubkey.toBase58());
@@ -154,7 +152,6 @@ export const AuctionView = () => {
                   wallet,
                   connection,
                   programId,
-                  payerAccount,
                   auctionListPubkey,
                   treasuryPubkey,
                   auctionInfoPubkey,
@@ -163,7 +160,7 @@ export const AuctionView = () => {
               setRefresh(1);
           })();
       }
-  }, [connected, bidAmount, wallet, connection, programId, payerAccount, auctionListPubkey, treasuryPubkey, auctionInfoPubkey, sysvarClockPubKey]);
+  }, [connected, bidAmount, wallet, connection, programId, auctionListPubkey, treasuryPubkey, auctionInfoPubkey, sysvarClockPubKey]);
 
 
   const handleSubmitClaim = React.useCallback((event) => {

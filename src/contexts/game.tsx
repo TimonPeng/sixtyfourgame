@@ -45,7 +45,6 @@ export const sendBidSequence = async (
   wallet: any,
   connection: any,
   programId: PublicKey,
-  payerAccount: Account,
   auctionListPubkey: PublicKey,
   treasuryPubkey: PublicKey,
   auctionEndSlotPubkey: PublicKey,
@@ -385,6 +384,53 @@ export const sendAttackSequence = async (
       txid: txid
     });
 };
+
+
+export const sendClaimPrizeSequence = async (
+  wallet: any,
+  claimSquareNumber: number,
+  connection: any,
+  programId: PublicKey,
+  claimerAccountPubkey: PublicKey,
+  auctionInfoPubkey: PublicKey,
+  sysvarClockPubKey: PublicKey,
+  splTokenProgramPubKey: PublicKey,
+  activePlayersListPubkey: PublicKey,
+  allGameSquaresListPubkey: PublicKey,
+  treasuryPubkey: PublicKey,
+) => {
+
+    // Create new initiate play transaction
+    let transaction = new Transaction();
+    const instruction = new TransactionInstruction({
+        keys: [{pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+               {pubkey: claimerAccountPubkey, isSigner: false, isWritable: true},
+               {pubkey: auctionInfoPubkey, isSigner: false, isWritable: true},
+               {pubkey: sysvarClockPubKey, isSigner: false, isWritable: false},
+               {pubkey: sysvarSlotHashesPubKey, isSigner: false, isWritable: false},
+               {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+               {pubkey: splTokenProgramPubKey, isSigner: false, isWritable: false},
+               {pubkey: activePlayersListPubkey, isSigner: false, isWritable: true},
+               {pubkey: allGameSquaresListPubkey, isSigner: false, isWritable: true},
+               {pubkey: treasuryPubkey, isSigner: false, isWritable: true}],
+        data: Buffer.from([
+            7, ...longToByteArray(claimSquareNumber)
+        ]),
+        programId,
+    });
+    transaction.add(instruction);
+
+    console.log('Sending Claim Prize transaction');
+    let txid = await sendTransaction(connection, wallet, null, null, transaction, true);
+    console.log('Attack Claim Prize sent');
+
+    notify({
+      message: "Claim Prize transaction sent",
+      type: "success",
+      txid: txid
+    });
+};
+
 
 const getAccountInfo = async (connection: Connection, pubKey: PublicKey) => {
   const info = await connection.getAccountInfo(pubKey, "recent");

@@ -21,6 +21,8 @@ export const GameBoard = (props: {
   const { wallet } = useWallet();
   const { account } = useNativeAccount();
 
+  // TODO:2D ARRAY...
+
   const col1 = [43,42,41,40,39,38,37,64];
   const col2 = [44,21,20,19,18,17,36,63];
   const col3 = [45,22,7,6,5,16,35,62];
@@ -31,7 +33,7 @@ export const GameBoard = (props: {
   const col8 = [50,51,52,53,54,55,56,57];
 
   // TODO: CLEAN UP REPEATED CODE
-  
+
   return (
     <div className="gameboard-wrapper text-white display-inline-flex">
       <div className="gameboard-col">
@@ -47,6 +49,8 @@ export const GameBoard = (props: {
                         teamColor = 'green';
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
+                    } else if (square.team_number == 99) {
+                        teamColor = 'black';
                     }
                     var bgClass = teamColor + "-bg";
                     if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
@@ -71,6 +75,8 @@ export const GameBoard = (props: {
                         teamColor = 'green';
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
+                    } else if (square.team_number == 99) {
+                        teamColor = 'black';
                     }
                     var bgClass = teamColor + "-bg";
                     if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
@@ -95,6 +101,8 @@ export const GameBoard = (props: {
                         teamColor = 'green';
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
+                    } else if (square.team_number == 99) {
+                        teamColor = 'black';
                     }
                     var bgClass = teamColor + "-bg";
                     if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
@@ -119,6 +127,8 @@ export const GameBoard = (props: {
                         teamColor = 'green';
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
+                    } else if (square.team_number == 99) {
+                        teamColor = 'black';
                     }
                     var bgClass = teamColor + "-bg";
                     if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
@@ -143,6 +153,8 @@ export const GameBoard = (props: {
                         teamColor = 'green';
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
+                    } else if (square.team_number == 99) {
+                        teamColor = 'black';
                     }
                     var bgClass = teamColor + "-bg";
                     if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
@@ -167,6 +179,8 @@ export const GameBoard = (props: {
                         teamColor = 'green';
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
+                    } else if (square.team_number == 99) {
+                        teamColor = 'black';
                     }
                     var bgClass = teamColor + "-bg";
                     if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
@@ -191,6 +205,8 @@ export const GameBoard = (props: {
                         teamColor = 'green';
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
+                    } else if (square.team_number == 99) {
+                        teamColor = 'black';
                     }
                     var bgClass = teamColor + "-bg";
                     if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {
@@ -215,6 +231,8 @@ export const GameBoard = (props: {
                         teamColor = 'green';
                     } else if (square.team_number == 3) {
                         teamColor = 'orange';
+                    } else if (square.team_number == 99) {
+                        teamColor = 'black';
                     }
                     var bgClass = teamColor + "-bg";
                     if (props.activeGameSquares.indexOf(square.game_square_number) == -1) {

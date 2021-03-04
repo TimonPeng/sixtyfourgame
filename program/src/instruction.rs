@@ -37,6 +37,10 @@ pub enum SixtyFourGameInstruction {
         from_square: u64,
         to_square: u64,
     },
+    /// ClaimPrize - square - once game is over send winner the prize
+    ClaimPrize {
+        square: u64,
+    },
 }
 
 impl SixtyFourGameInstruction {
@@ -62,6 +66,9 @@ impl SixtyFourGameInstruction {
                 amount: Self::unpack_amount(rest, 0)?,
                 from_square: Self::unpack_amount(rest, 8)?,
                 to_square: Self::unpack_amount(rest, 16)?,
+            },
+            7 => Self::ClaimPrize {
+                square: Self::unpack_amount(rest, 0)?,
             },
             _ => return Err(InvalidInstruction.into()),
         })

@@ -30,6 +30,9 @@ use crate::{
     util::{hash_value, get_slot_hash, unpack_mint},
 };
 
+const GAME_OVER_TEAM_NUMBER_UNCLAIMED: u64 = 99;
+const GAME_OVER_TEAM_NUMBER_CLAIMED: u64 = 100;
+
 pub struct Processor;
 impl Processor {
     pub fn process(
@@ -67,6 +70,10 @@ impl Processor {
             SixtyFourGameInstruction::Attack { amount, from_square, to_square } => {
                 msg!("SixtyFourGameInstruction: Attack");
                 Self::process_attack(accounts, amount, from_square, to_square, program_id)
+            }
+            SixtyFourGameInstruction::ClaimPrize { square } => {
+                msg!("SixtyFourGameInstruction: ClaimPrize");
+                Self::process_claim_prize(accounts, square, program_id)
             }
         }
     }
@@ -508,7 +515,7 @@ impl Processor {
         // Placeholders for now...
         attacker_active_player_info.game_square_number = 999;
         attacker_active_player_info.owner_pubkey = spl_token::ID;
-        
+
         ActivePlayer::pack(attacker_active_player_info, &mut active_players_list_account.data.borrow_mut()[fromOffsetActive..(fromOffsetActive + 72)])?;
 
         msg!("End Play / Withdraw NFT successful");
@@ -744,7 +751,7 @@ impl Processor {
         GameSquare::pack(attacker_info, &mut all_game_squares_list_account.data.borrow_mut()[fromOffset..(fromOffset + 56)])?;
         GameSquare::pack(defender_info, &mut all_game_squares_list_account.data.borrow_mut()[toOffset..(toOffset + 56)])?;
 
-        // Check for winner
+        // Check for winner - TODO: save this in account?
         let mut red = 0;  //0
         let mut blue = 0;  //1
         let mut green = 0;  //2
@@ -771,34 +778,83 @@ impl Processor {
            green == auction_info.squares_minted ||
            orange == auction_info.squares_minted {
 
-            msg!("Game over!");
+            msg!("Game over! Changing team numbers");
 
-            // Payout funds TODO: need to pay active players and find nft owners if not active
-            // for i in 0..64 {
-            //     let mut fromOffset = (i * 56) as usize;
-            //     let mut active_player_info = ActivePlayer::unpack_unchecked(&all_game_squares_list_account.data.borrow()[fromOffset..(fromOffset + 56)])?;
-            //
-            //     let payout_account = AccountInfo::new(
-            //         active_player_info.owner_pukey,
-            //         false,
-            //         true,
-            //         &mut lamports,
-            //         &mut data,
-            //         &owner,
-            //         false,
-            //         Epoch::default(),
-            //     );
-            //
-            //     let amount = (treasury_account.lamports / 64) as u64;
-            //     **treasury_account.lamports.borrow_mut() -= amount;
-            //     **payout_account.lamports.borrow_mut() += amount;
-            // }
+            // Set team number to specific number to signify game over
+            for i in 0..auction_info.squares_minted {
+                let mut fromOffset = (i * 56) as usize;
+                let mut game_square_info = GameSquare::unpack_unchecked(&all_game_squares_list_account.data.borrow()[fromOffset..(fromOffset + 56)])?;
+                game_square_info.team_number = GAME_OVER_TEAM_NUMBER_UNCLAIMED;
+                GameSquare::pack(game_square_info, &mut all_game_squares_list_account.data.borrow_mut()[fromOffset..(fromOffset + 56)])?;
+            }
         }
 
         msg!("Attack successful");
         Ok(())
     }
 
+    pub fn process_claim_prize(
+        accounts: &[AccountInfo],
+        square: u64,
+        program_id: &Pubkey,
+    ) -> ProgramResult {
+
+        // Set accounts
+        let accounts_iter = &mut accounts.iter();
+        let payer_account = next_account_info(accounts_iter)?;
+        let claimer_account = next_account_info(accounts_iter)?;
+        let auction_info_account = next_account_info(accounts_iter)?;
+        let sysvar_account = next_account_info(accounts_iter)?;
+        let sysvar_slot_history = next_account_info(accounts_iter)?;
+        let rent_account = next_account_info(accounts_iter)?;
+        let spl_token_program = next_account_info(accounts_iter)?;
+        let active_players_list_account = next_account_info(accounts_iter)?;
+        let all_game_squares_list_account = next_account_info(accounts_iter)?;
+        let treasury_account = next_account_info(accounts_iter)?;
+
+        // Dont allow claim prize if before auction
+        let current_slot = Clock::from_account_info(sysvar_account)?.slot;
+        let mut auction_info = AuctionInfo::unpack_unchecked(&auction_info_account.data.borrow())?;
+        if !auction_info.auction_enabled ||
+            auction_info.auction_end_slot >= current_slot {
+            msg!("Auction is active, cannot claim prize");
+            return Err(ProgramError::InvalidAccountData);  //TODO
+        }
+
+        // Check prize is claimable
+        let mut fromOffset = (square * 56) as usize;
+        let mut game_square_info = GameSquare::unpack_unchecked(&all_game_squares_list_account.data.borrow()[fromOffset..(fromOffset + 56)])?;
+        if (game_square_info.team_number != GAME_OVER_TEAM_NUMBER_UNCLAIMED) {
+            msg!("Team number of game square not equal to GAME_OVER_TEAM_NUMBER_UNCLAIMED. Game may not be over or prize was already claimed.");
+            return Err(ProgramError::InvalidAccountData);  //TODO
+        }
+
+        // Check owner matches
+        let offset = (square * 72) as usize;
+        let mut active_player_info = ActivePlayer::unpack_unchecked(&active_players_list_account.data.borrow()[offset..(offset + 72)])?;
+        if (active_player_info.owner_pubkey != *claimer_account.key) {
+            msg!("Trying to claim a prize for a different atcive player owner");
+            return Err(ProgramError::InvalidAccountData);  //TODO
+        }
+
+        msg!("Claiming prize!");
+
+        // Trasnfer prize amount to player
+        let payout_amount = (treasury_account.lamports() / auction_info.squares_minted) as u64;
+        **treasury_account.lamports.borrow_mut() -= payout_amount;
+        **claimer_account.lamports.borrow_mut() += payout_amount;
+
+        // Set team number to claimed
+        game_square_info.team_number = GAME_OVER_TEAM_NUMBER_CLAIMED;
+        GameSquare::pack(game_square_info, &mut all_game_squares_list_account.data.borrow_mut()[fromOffset..(fromOffset + 56)])?;
+
+        // Decrement squares_minted to give each winner same %
+        auction_info.squares_minted -= 1;  // TODO: use different var for this
+        AuctionInfo::pack(auction_info, &mut auction_info_account.data.borrow_mut())?;
+
+        msg!("Claim prize successful");
+        Ok(())
+    }
 }
 
 
