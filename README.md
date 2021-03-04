@@ -56,7 +56,7 @@ SFGInstruction::InitiateAuction(auction_end_slot)
 SFGInstruction::Bid(amount)
 - Creates a BidEntry into the AuctionList (SOL lamports amount, pub key)  
 - Can only be done if before auction_end_block_number
-- Use PDA for holding SOL funds
+- Holding SOL funds in treasury
 
 SFGInstruction::CancelBid()
 - Cancels a BidEntry in the AuctionList (pubkey of signer only)
@@ -66,7 +66,7 @@ SFGInstruction::CancelBid()
 SFGInstruction::MintNFT(bidEntryNumber)
 - Mints NFT for a BidEntry and sends to saved pubkey
 - Can only be done if auction_end_block_number is passed
-- Can only be done by anyone
+- Can be done by anyone
 
 SFGInstruction::InitiatePlay(square)
 - Deposit NFT to initiate play
@@ -81,7 +81,11 @@ SFGInstruction::EndPlay(square)
 SFGInstruction::Attack(fromSquare, toSquare)
 - Attacks neighboring square
 - Can only be done by fromSquare owner
-- If a square loses all lives, transfer ownership of NFT to attacker
+- If a square's health goes below 0, transfer ownership of NFT to opposing square
+
+SFGInstruction::ClaimPrize(square)
+- Once the game is over, send 1/64 of the treasury to the current active player
+- Can be done by anyone
 
 ```
 
