@@ -37,6 +37,20 @@ export class LedgerWalletAdapter extends EventEmitter implements WalletAdapter {
     return transaction;
   }
 
+  public async signAllTransactions(
+    transactions: Transaction[],
+  ): Promise<Transaction[]> {
+    const result: Transaction[] = [];
+    for (let i = 0; i < transactions.length; i++) {
+      const transaction = transactions[i];
+      const signed = await this.signTransaction(transaction);
+      result.push(signed);
+    }
+
+    return result;
+  }
+
+
   async connect() {
     if (this._connecting) {
       return;

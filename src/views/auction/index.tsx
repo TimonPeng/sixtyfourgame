@@ -10,7 +10,7 @@ import { useMarkets } from "../../contexts/market";
 import { formatNumber } from "../../utils/utils";
 import { getAuctionList, getAuctionInfo, getCurrentSlot, sendClaimSequence, sendBidSequence, getGameSquares } from "../../contexts/game"
 import configData from "../../config.json";
-import { DataGrid, ColDef, RowsProp, CellParams } from '@material-ui/data-grid';
+import { DataGrid, GridColDef, GridRowsProp, GridCellParams } from '@material-ui/data-grid';
 import { notify } from "../../utils/notifications";
 
 import {
@@ -62,13 +62,13 @@ export const AuctionView = () => {
       { id: 0, bidder: "There are no bids", bid_number: -1, bidder_pubkey: '', amount: 0, rank: 1}
   ]);
 
-  const columns: ColDef[] = [
+  const columns: GridColDef[] = [
     {
       field: 'rank',
       headerName: 'Rank',
       width: 90,
       headerClassName: 'text-white',
-      renderCell: (params: CellParams) => (
+      renderCell: (params: GridCellParams) => (
           <strong className={params.value as number <= (64 - squaresMinted) ? "text-green" : "text-red"}>
               {params.value}
           </strong>
@@ -79,7 +79,7 @@ export const AuctionView = () => {
       headerName: 'Action',
       width: 110,
       headerClassName: 'text-white',
-      renderCell: (params: CellParams) => (
+      renderCell: (params: GridCellParams) => (
           <strong>
             { connected && !auctionActive ?
               <form onSubmit={handleSubmitClaim}>

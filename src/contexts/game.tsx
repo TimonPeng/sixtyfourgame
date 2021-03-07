@@ -5,21 +5,46 @@ import {
   PublicKey,
   LAMPORTS_PER_SOL,
   Account,
+  AccountInfo,
   clusterApiUrl,
+  Commitment,
   Connection,
   Transaction,
+  TransactionSignature,
   SystemProgram,
   TransactionInstruction,
+  RpcResponseAndContext,
+  SimulatedTransactionResponse,
   SYSVAR_RENT_PUBKEY
 } from "@solana/web3.js";
+import {
+  DexInstructions,
+  Market,
+  OpenOrders,
+  TOKEN_MINTS,
+  TokenInstructions,
+} from '@project-serum/serum';
 import {AccountLayout, u64, MintInfo, MintLayout, Token} from "@solana/spl-token";
 import React, { useContext, useEffect, useMemo } from "react";
 import { notify } from "../utils/notifications";
+import { WalletAdapter } from "./wallet";
+import BN from 'bn.js';
+import { sleep } from '../utils/utils';
+
+const DEFAULT_TIMEOUT = 15000;
 
 let TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 );
 let sysvarSlotHashesPubKey = new PublicKey('SysvarS1otHashes111111111111111111111111111');
+let quoteTokenMintSOL = new PublicKey('So11111111111111111111111111111111111111112');
+
+let serumDexProgramIdDevnet = new PublicKey('FG4zpk8FPP3R9K7JYZmgeUKCe6qMAsHgTncnMHJYJrxB');
+// let serumDexProgramIdDevnet = new PublicKey('9MVDeYQnJmN2Dt7H44Z8cob4bET2ysdNu2uFJcatDJno');
+
+export const getUnixTs = () => {
+  return new Date().getTime() / 1000;
+};
 
 // TODO: move to util
 const longToByteArray = function(long: any) {
@@ -385,6 +410,198 @@ export const sendAttackSequence = async (
     });
 };
 
+export const sendCreateMarketSequence = async (
+  wallet: any,
+  baseMintAddress: PublicKey,
+  connection: any,
+  programId: PublicKey,
+  auctionInfoPubkey: PublicKey,
+  sysvarClockPubKey: PublicKey,
+  splTokenProgramPubKey: PublicKey,
+  activePlayersListPubkey: PublicKey,
+  allGameSquaresListPubkey: PublicKey,
+  treasuryPubkey: PublicKey,
+) => {
+    var marketAddress;
+    try {
+      marketAddress = await listMarket({
+        connection,
+        wallet,
+        baseMint: baseMintAddress,
+        quoteMint: quoteTokenMintSOL,
+        baseLotSize: 1,
+        quoteLotSize: 1000000,
+        dexProgramId: serumDexProgramIdDevnet,
+      });
+    } catch (e) {
+      console.warn(e);
+      notify({
+        message: "Error creating market...",
+        type: "error",
+      });
+    }
+
+    notify({
+      message: "Create market transactions sent",
+      type: "success"
+    });
+    
+    return marketAddress;
+};
+
+export async function listMarket({
+  connection,
+  wallet,
+  baseMint,
+  quoteMint,
+  baseLotSize,
+  quoteLotSize,
+  dexProgramId,
+}: {
+  connection: Connection;
+  wallet: WalletAdapter;
+  baseMint: PublicKey;
+  quoteMint: PublicKey;
+  baseLotSize: number;
+  quoteLotSize: number;
+  dexProgramId: PublicKey;
+}) {
+  const market = new Account();
+  const requestQueue = new Account();
+  const eventQueue = new Account();
+  const bids = new Account();
+  const asks = new Account();
+  const baseVault = new Account();
+  const quoteVault = new Account();
+  const feeRateBps = 0;
+  const quoteDustThreshold = new BN(100);
+
+  async function getVaultOwnerAndNonce() {
+    const nonce = new BN(0);
+    while (true) {
+      try {
+        const vaultOwner = await PublicKey.createProgramAddress(
+          [market.publicKey.toBuffer(), nonce.toArrayLike(Buffer, 'le', 8)],
+          dexProgramId,
+        );
+        return [vaultOwner, nonce];
+      } catch (e) {
+        nonce.iaddn(1);
+      }
+    }
+  }
+  const [vaultOwner, vaultSignerNonce] = await getVaultOwnerAndNonce();
+
+  if (typeof wallet == "undefined" || wallet.publicKey == null) {
+    throw new Error('Missing wallet');
+  }
+
+  const tx1 = new Transaction();
+  tx1.add(
+    SystemProgram.createAccount({
+      fromPubkey: wallet.publicKey,
+      newAccountPubkey: baseVault.publicKey,
+      lamports: await connection.getMinimumBalanceForRentExemption(165),
+      space: 165,
+      programId: TokenInstructions.TOKEN_PROGRAM_ID,
+    }),
+    SystemProgram.createAccount({
+      fromPubkey: wallet.publicKey,
+      newAccountPubkey: quoteVault.publicKey,
+      lamports: await connection.getMinimumBalanceForRentExemption(165),
+      space: 165,
+      programId: TokenInstructions.TOKEN_PROGRAM_ID,
+    }),
+    TokenInstructions.initializeAccount({
+      account: baseVault.publicKey,
+      mint: baseMint,
+      owner: vaultOwner,
+    }),
+    TokenInstructions.initializeAccount({
+      account: quoteVault.publicKey,
+      mint: quoteMint,
+      owner: vaultOwner,
+    }),
+  );
+
+  const tx2 = new Transaction();
+  tx2.add(
+    SystemProgram.createAccount({
+      fromPubkey: wallet.publicKey,
+      newAccountPubkey: market.publicKey,
+      lamports: await connection.getMinimumBalanceForRentExemption(
+        Market.getLayout(dexProgramId).span,
+      ),
+      space: Market.getLayout(dexProgramId).span,
+      programId: dexProgramId,
+    }),
+    SystemProgram.createAccount({
+      fromPubkey: wallet.publicKey,
+      newAccountPubkey: requestQueue.publicKey,
+      lamports: await connection.getMinimumBalanceForRentExemption(5120 + 12),
+      space: 5120 + 12,
+      programId: dexProgramId,
+    }),
+    SystemProgram.createAccount({
+      fromPubkey: wallet.publicKey,
+      newAccountPubkey: eventQueue.publicKey,
+      lamports: await connection.getMinimumBalanceForRentExemption(262144 + 12),
+      space: 262144 + 12,
+      programId: dexProgramId,
+    }),
+    SystemProgram.createAccount({
+      fromPubkey: wallet.publicKey,
+      newAccountPubkey: bids.publicKey,
+      lamports: await connection.getMinimumBalanceForRentExemption(65536 + 12),
+      space: 65536 + 12,
+      programId: dexProgramId,
+    }),
+    SystemProgram.createAccount({
+      fromPubkey: wallet.publicKey,
+      newAccountPubkey: asks.publicKey,
+      lamports: await connection.getMinimumBalanceForRentExemption(65536 + 12),
+      space: 65536 + 12,
+      programId: dexProgramId,
+    }),
+    DexInstructions.initializeMarket({
+      market: market.publicKey,
+      requestQueue: requestQueue.publicKey,
+      eventQueue: eventQueue.publicKey,
+      bids: bids.publicKey,
+      asks: asks.publicKey,
+      baseVault: baseVault.publicKey,
+      quoteVault: quoteVault.publicKey,
+      baseMint,
+      quoteMint,
+      baseLotSize: new BN(baseLotSize),
+      quoteLotSize: new BN(quoteLotSize),
+      feeRateBps,
+      vaultSignerNonce,
+      quoteDustThreshold,
+      programId: dexProgramId,
+    }),
+  );
+
+  const signedTransactions = await signTransactions({
+    transactionsAndSigners: [
+      { transaction: tx1, signers: [baseVault, quoteVault] },
+      {
+        transaction: tx2,
+        signers: [market, requestQueue, eventQueue, bids, asks],
+      },
+    ],
+    wallet,
+    connection,
+  });
+  for (let signedTransaction of signedTransactions) {
+    await sendSignedTransaction({
+      signedTransaction,
+      connection,
+    });
+  }
+
+  return market.publicKey;
+}
 
 export const sendClaimPrizeSequence = async (
   wallet: any,
@@ -656,3 +873,208 @@ export const sendTransaction = async (
   }
   return txid;
 };
+
+// TODO: merge this..
+export async function signTransactions({
+  transactionsAndSigners,
+  wallet,
+  connection,
+}: {
+  transactionsAndSigners: {
+    transaction: Transaction;
+    signers?: Array<Account>;
+  }[];
+  wallet: WalletAdapter;
+  connection: Connection;
+}) {
+
+  const blockhash = (await connection.getRecentBlockhash('max')).blockhash;
+  transactionsAndSigners.forEach(({ transaction, signers = [] }) => {
+    transaction.recentBlockhash = blockhash;
+    if (typeof wallet == "undefined" || wallet.publicKey == null) {
+      throw new Error('Missing wallet');
+    }
+    transaction.setSigners(
+      wallet.publicKey,
+      ...signers.map((s) => s.publicKey),
+    );
+    if (signers?.length > 0) {
+      transaction.partialSign(...signers);
+    }
+  });
+  return await wallet.signAllTransactions(
+    transactionsAndSigners.map(({ transaction }) => transaction),
+  );
+}
+
+export async function sendSignedTransaction({
+  signedTransaction,
+  connection,
+  sendingMessage = 'Sending transaction...',
+  sentMessage = 'Transaction sent',
+  successMessage = 'Transaction confirmed',
+  timeout = DEFAULT_TIMEOUT,
+}: {
+  signedTransaction: Transaction;
+  connection: Connection;
+  sendingMessage?: string;
+  sentMessage?: string;
+  successMessage?: string;
+  timeout?: number;
+}): Promise<string> {
+  const rawTransaction = signedTransaction.serialize();
+  const startTime = getUnixTs();
+  notify({ message: sendingMessage });
+  const txid: TransactionSignature = await connection.sendRawTransaction(
+    rawTransaction,
+    {
+      skipPreflight: true,
+    },
+  );
+  notify({ message: sentMessage, type: 'success', txid });
+
+  console.log('Started awaiting confirmation for', txid);
+
+  let done = false;
+  (async () => {
+    while (!done && getUnixTs() - startTime < timeout) {
+      connection.sendRawTransaction(rawTransaction, {
+        skipPreflight: true,
+      });
+      await sleep(300);
+    }
+  })();
+  try {
+    await awaitTransactionSignatureConfirmation(txid, timeout, connection);
+  } catch (err) {
+    if (err.timeout) {
+      throw new Error('Timed out awaiting confirmation on transaction');
+    }
+    let simulateResult: SimulatedTransactionResponse | null = null;
+    try {
+      simulateResult = (
+        await simulateTransaction(connection, signedTransaction, 'single')
+      ).value;
+    } catch (e) {}
+    if (simulateResult && simulateResult.err) {
+      if (simulateResult.logs) {
+        for (let i = simulateResult.logs.length - 1; i >= 0; --i) {
+          const line = simulateResult.logs[i];
+          if (line.startsWith('Program log: ')) {
+            throw new Error(
+              'Transaction failed: ' + line.slice('Program log: '.length),
+            );
+          }
+        }
+      }
+      throw new Error(JSON.stringify(simulateResult.err));
+    }
+    throw new Error('Transaction failed');
+  } finally {
+    done = true;
+  }
+  notify({ message: successMessage, type: 'success', txid });
+
+  console.log('Latency', txid, getUnixTs() - startTime);
+  return txid;
+}
+
+
+async function awaitTransactionSignatureConfirmation(
+  txid: TransactionSignature,
+  timeout: number,
+  connection: Connection,
+) {
+  let done = false;
+  const result = await new Promise((resolve, reject) => {
+    (async () => {
+      setTimeout(() => {
+        if (done) {
+          return;
+        }
+        done = true;
+        console.log('Timed out for txid', txid);
+        reject({ timeout: true });
+      }, timeout);
+      try {
+        connection.onSignature(
+          txid,
+          (result) => {
+            console.log('WS confirmed', txid, result);
+            done = true;
+            if (result.err) {
+              reject(result.err);
+            } else {
+              resolve(result);
+            }
+          },
+          'recent',
+        );
+        console.log('Set up WS connection', txid);
+      } catch (e) {
+        done = true;
+        console.log('WS error in setup', txid, e);
+      }
+      while (!done) {
+        // eslint-disable-next-line no-loop-func
+        (async () => {
+          try {
+            const signatureStatuses = await connection.getSignatureStatuses([
+              txid,
+            ]);
+            const result = signatureStatuses && signatureStatuses.value[0];
+            if (!done) {
+              if (!result) {
+                console.log('REST null result for', txid, result);
+              } else if (result.err) {
+                console.log('REST error for', txid, result);
+                done = true;
+                reject(result.err);
+              } else if (!result.confirmations) {
+                console.log('REST no confirmations for', txid, result);
+              } else {
+                console.log('REST confirmation for', txid, result);
+                done = true;
+                resolve(result);
+              }
+            }
+          } catch (e) {
+            if (!done) {
+              console.log('REST connection error: txid', txid, e);
+            }
+          }
+        })();
+        await sleep(300);
+      }
+    })();
+  });
+  done = true;
+  return result;
+}
+
+/** Copy of Connection.simulateTransaction that takes a commitment parameter. */
+async function simulateTransaction(
+  connection: Connection,
+  transaction: Transaction,
+  commitment: Commitment,
+): Promise<RpcResponseAndContext<SimulatedTransactionResponse>> {
+  // @ts-ignore
+  transaction.recentBlockhash = await connection._recentBlockhash(
+    // @ts-ignore
+    connection._disableBlockhashCaching,
+  );
+
+  const signData = transaction.serializeMessage();
+  // @ts-ignore
+  const wireTransaction = transaction._serialize(signData);
+  const encodedTransaction = wireTransaction.toString('base64');
+  const config: any = { encoding: 'base64', commitment };
+  const args = [encodedTransaction, config];
+
+  // @ts-ignore
+  const res = await connection._rpcRequest('simulateTransaction', args);
+  if (res.error) {
+    throw new Error('failed to simulate transaction: ' + res.error.message);
+  }
+  return res.result;
+}

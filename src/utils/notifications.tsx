@@ -12,7 +12,7 @@ export function notify({
   placement = "bottomLeft",
 }) {
   if (txid) {
-    description = <Anchor className="white-bg text-black"><Link className="white-bg text-black" href={'https://explorer.solana.com/tx/' + txid + "?cluster=testnet"} title="VIEW TRANSACTION" /></Anchor>;
+    description = <Anchor className="white-bg text-black"><Link className="white-bg text-black" href={'https://explorer.solana.com/tx/' + txid + "?cluster=devnet"} title="VIEW TRANSACTION" /></Anchor>;
   }
   (notification as any)[type]({
     message: <span style={{ color: "black" }}>{message}</span>,

@@ -30,7 +30,7 @@ export const ENDPOINTS = [
   { name: "localnet" as ENV, endpoint: "http://127.0.0.1:8899" },
 ];
 
-const DEFAULT = ENDPOINTS[1].endpoint;
+const DEFAULT = ENDPOINTS[2].endpoint;
 const DEFAULT_SLIPPAGE = 0.25;
 
 interface ConnectionConfig {
@@ -52,7 +52,7 @@ const ConnectionContext = React.createContext<ConnectionConfig>({
   setSlippage: (val: number) => {},
   connection: new Connection(DEFAULT, "recent"),
   sendConnection: new Connection(DEFAULT, "recent"),
-  env: ENDPOINTS[1].name,
+  env: ENDPOINTS[2].name,
   tokens: [],
   tokenMap: new Map<string, KnownToken>(),
 });
@@ -60,7 +60,7 @@ const ConnectionContext = React.createContext<ConnectionConfig>({
 export function ConnectionProvider({ children = undefined as any }) {
   const [endpoint, setEndpoint] = useLocalStorageState(
     "connectionEndpts",
-    ENDPOINTS[1].endpoint
+    ENDPOINTS[2].endpoint
   );
 
   const [slippage, setSlippage] = useLocalStorageState(
@@ -77,7 +77,7 @@ export function ConnectionProvider({ children = undefined as any }) {
 
   const env =
     ENDPOINTS.find((end) => end.endpoint === endpoint)?.name ||
-    ENDPOINTS[1].name;
+    ENDPOINTS[2].name;
 
   const [tokens, setTokens] = useState<KnownToken[]>([]);
   const [tokenMap, setTokenMap] = useState<Map<string, KnownToken>>(new Map());

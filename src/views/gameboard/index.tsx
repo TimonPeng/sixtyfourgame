@@ -9,7 +9,7 @@ import { useConnection, useConnectionConfig } from "../../contexts/connection";
 import { useWallet } from "../../contexts/wallet";
 import { useMarkets } from "../../contexts/market";
 import { formatNumber } from "../../utils/utils";
-import { DataGrid, ColDef, RowsProp, CellParams } from '@material-ui/data-grid';
+import { DataGrid, GridColDef, GridRowsProp, GridCellParams } from '@material-ui/data-grid';
 import {
   getAuctionList,
   getAuctionInfo,
@@ -184,13 +184,13 @@ export const GameBoardView = () => {
       { id: 0, mint_pubkey: "There are no bids", is_active: "No", health_number: -1, team_number: -1, game_square_number: -1}
   ]);
 
-  const columns: ColDef[] = [
+  const columns: GridColDef[] = [
     {
       field: 'game_square_number',
       headerName: '#',
       width: 140,
       headerClassName: 'text-white',
-      renderCell: (params: CellParams) => (
+      renderCell: (params: GridCellParams) => (
           <strong className="display-flex">
               <p className="margin-top-3">{params.value as number + 1}</p>
               {connected && myGameSquares.indexOf(params.value as number) != -1 ?
@@ -221,7 +221,7 @@ export const GameBoardView = () => {
       headerName: 'Active',
       width: 100,
       headerClassName: 'text-white',
-      renderCell: (params: CellParams) => (
+      renderCell: (params: GridCellParams) => (
           <strong>
               {activeGameSquares.indexOf(params.value as number) != -1 ? "Yes" : "No"}
           </strong>
@@ -232,7 +232,7 @@ export const GameBoardView = () => {
       headerName: 'Team',
       width: 110,
       headerClassName: 'text-white',
-      renderCell: (params: CellParams) => (
+      renderCell: (params: GridCellParams) => (
           <strong>
               { params.value == "0" ?
                   <div className="text-red">RED</div> : ""}
@@ -374,7 +374,7 @@ export const GameBoardView = () => {
           );
           setRows(gameSquareData);
           for(var i=0; i<gameSquareData.length;i++) {
-              if (gameSquareData[i].team_number == 99) {
+              if (gameSquareData[i].team_number == 99 || gameSquareData[i].team_number == 100) {
                   setGameOver(true);
                   break;
               }
@@ -551,6 +551,7 @@ export const GameBoardView = () => {
         <h2>GameBoard</h2>
         <h3>Battle for The Prize, Winning Team Take All</h3>
         <h4>The Prize: {prize} SOL - GameSquares Minted: {squaresMinted}</h4>
+        <h4>Entering Showdown in {0} mintues</h4>
       </Col>
 
       <Col span={12} >

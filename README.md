@@ -43,9 +43,14 @@ Claim all squares of the game - 64 owners of the winning team are returned depos
 
 ![Game Board Mid](MIDGAME.png?raw=true "Gameboard Mid")
 
-# Marketplace (TODO)
-Players can sell their game square NFTs in the marketplace for SOL
+# Showdown (TODO)
+To prevent sabotaging the game, ALL squares must become active after 6,000,000 blocks from the end of the auction (~27 days). Otherwise, the square can be purged from the game. Once in Showdown mode, players cannot withdraw their NFT incentivising ending the game.
 
+# Marketplace / Serum DEX
+Players can buy or sell game square NFTs in the marketplace for SOL using the Serum DEX: https://dex.sixtyfourgame.com/
+
+![Marketplace](markets.png?raw=true "Marketplace")
+![Serum DEX](dex.png?raw=true "Serum DEX")
 
 # SFG Program Instructions:
 ```
