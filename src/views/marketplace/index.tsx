@@ -94,6 +94,16 @@ export const MarketplaceView = () => {
       setBidAmount(event.target.value);
   }, []);
 
+  const getMarketBySquareNumber = React.useCallback((square) => {
+      var market = null;
+      for(var i =0; i< markets.length; i++) {
+          if (markets[i].gameSquareNumber == square) {
+              market = markets[i];
+          }
+      }
+      return market;
+  }, [markets]);
+
   const refreshTreasuryBalance = React.useCallback(() => {
       (async () => {
         try {
@@ -216,8 +226,8 @@ export const MarketplaceView = () => {
           <strong className="display-flex">
               {markets.length > 0 && params != null && params.getValue("game_square_number")! != null &&
                marketNumbers.indexOf(+params.getValue("game_square_number")! + 1) != -1 &&
-               typeof markets[+params.getValue("game_square_number")!]! != "undefined" ?
-                    <a className="black-bg text-white" target="_blank" href={'https://dex.sixtyfourgame.com/#/market/' + (markets[+params.getValue("game_square_number")!]!.marketId)}>VIEW DEX MARKET</a> : <p></p> }
+               getMarketBySquareNumber(+params.getValue("game_square_number")! + 1) != null ?
+                    <a className="black-bg text-white" target="_blank" href={'https://dex.sixtyfourgame.com/#/market/' + (getMarketBySquareNumber(+params.getValue("game_square_number")! + 1)!.marketId)}>VIEW DEX MARKET</a> : <p></p> }
           </strong>
       ),
     },

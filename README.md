@@ -119,4 +119,12 @@ mkdir store
 // deploy (to testnet)
 npm run start
 
+// SERVER
+
+cd server/
+npm install
+// set mongodb in .env:  ie: `DB = ‘mongodb://localhost:27017/sixtyfourgame’`
+node index.js
+
+
 ```
